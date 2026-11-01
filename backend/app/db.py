@@ -89,6 +89,7 @@ CREATE TABLE IF NOT EXISTS alerts (
     title TEXT NOT NULL,
     body TEXT NOT NULL,
     read INTEGER NOT NULL DEFAULT 0,
+    deleted INTEGER NOT NULL DEFAULT 0,
     created_at TEXT NOT NULL DEFAULT (datetime('now')),
     UNIQUE (user_id, key)
 );
@@ -122,6 +123,8 @@ def _migrate(conn: sqlite3.Connection) -> None:
     for column in ("username", "password_hash", "consented_at"):
         if column not in columns:
             conn.execute(f"ALTER TABLE users ADD COLUMN {column} TEXT")
+    if "deleted" not in {row["name"] for row in conn.execute("PRAGMA table_info(alerts)")}:
+        conn.execute("ALTER TABLE alerts ADD COLUMN deleted INTEGER NOT NULL DEFAULT 0")
     conn.execute("CREATE UNIQUE INDEX IF NOT EXISTS users_username ON users(username)")
     for old, new in RENAMED_DEPARTMENTS.items():
         conn.execute("UPDATE users SET department = ? WHERE department = ?", (new, old))

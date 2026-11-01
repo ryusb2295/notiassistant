@@ -8,7 +8,6 @@ const user = ref(null)
 const feed = ref(null)
 const sources = ref([])
 const alerts = ref([])
-const showAlerts = ref(false)
 const showOthers = ref(false)
 const error = ref('')
 
@@ -24,23 +23,15 @@ onMounted(async () => {
     error.value = failure.message
   }
 })
-
-async function toggleAlerts() {
-  showAlerts.value = !showAlerts.value
-  if (showAlerts.value && unread.value) {
-    await api.readAlerts()
-    alerts.value = alerts.value.map((alert) => ({ ...alert, read: 1 }))
-  }
-}
 </script>
 
 <template>
   <header class="head">
     <div class="head-row">
       <span class="brand"><span class="brand-mark"><Icon name="logo" :size="16" :width="2.2" style="color: #fff" /></span>공지비서</span>
-      <button class="icon-btn" :aria-label="`알림 ${unread}개`" :aria-expanded="showAlerts" @click="toggleAlerts">
+      <RouterLink to="/alerts" class="icon-btn" :aria-label="`알림함, 읽지 않은 알림 ${unread}개`">
         <Icon name="bell" :size="22" :width="1.8" /><span v-if="unread" class="dot"></span>
-      </button>
+      </RouterLink>
     </div>
     <div v-if="feed && user">
       <p class="muted">{{ user.name }}님, 최근 7일 새 공지 {{ feed.new_count }}개를 읽었어요</p>
@@ -51,12 +42,6 @@ async function toggleAlerts() {
       <RouterLink to="/boards" class="chip chip-add">+ 게시판 추가</RouterLink>
     </div>
   </header>
-  <div v-if="showAlerts" class="alert-panel">
-    <RouterLink v-for="alert in alerts" :key="alert.id" :to="`/notice/${alert.notice_id}`" class="alert">
-      <b>{{ alert.title }}</b><span>{{ alert.body }}</span>
-    </RouterLink>
-    <p v-if="!alerts.length" class="empty">아직 알림이 없어요</p>
-  </div>
   <main class="main">
     <p v-if="error" class="error" role="alert">{{ error }}</p>
     <template v-if="feed">

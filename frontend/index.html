@@ -2,12 +2,32 @@
 <html lang="ko">
   <head>
     <meta charset="utf-8" />
-    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
+    <meta name="theme-color" content="#ffffff" />
+    <meta name="mobile-web-app-capable" content="yes" />
+    <meta name="apple-mobile-web-app-capable" content="yes" />
+    <meta name="apple-mobile-web-app-title" content="공지비서" />
+    <meta name="apple-mobile-web-app-status-bar-style" content="default" />
+    <link rel="manifest" href="/manifest.webmanifest" />
+    <link rel="apple-touch-icon" href="/apple-touch-icon.png" />
     <title>공지비서</title>
     <link rel="preconnect" href="https://fonts.googleapis.com" />
     <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=IBM+Plex+Sans+KR:wght@400;500;600;700&display=swap" />
+    <style>
+      #splash { position: fixed; inset: 0; z-index: 100; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 14px; background: #fff; transition: opacity 0.25s; }
+      #splash.done { opacity: 0; pointer-events: none; }
+      .splash-mark { width: 84px; height: 84px; border-radius: 24px; background: #2453d6; display: flex; align-items: center; justify-content: center; }
+      .splash-name { font: 700 20px 'IBM Plex Sans KR', system-ui, sans-serif; letter-spacing: -0.3px; color: #14171f; }
+      @media (prefers-reduced-motion: reduce) { #splash { transition: none; } }
+    </style>
   </head>
   <body>
+    <div id="splash" role="status" aria-label="공지비서를 여는 중">
+      <span class="splash-mark">
+        <svg width="44" height="44" viewBox="0 0 24 24" fill="none" stroke="#fff" stroke-width="2.2" stroke-linecap="round" aria-hidden="true"><path d="M4 6h16M4 12h10M4 18h7" /></svg>
+      </span>
+      <span class="splash-name">공지비서</span>
+    </div>
     <div id="app"></div>
     <script type="module" src="/src/main.js"></script>
   </body>

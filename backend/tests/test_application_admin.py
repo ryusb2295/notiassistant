@@ -123,6 +123,70 @@ def test_publish_reaches_only_target_students(office):
     assert listed[0]["id"] == notice_id and listed[0]["notified"] == 2
 
 
+def test_staff_role_can_use_office_tools(client, monkeypatch):  # noqa: F811
+    monkeypatch.setattr(config, "STAFF_USERNAMES", {"staff-user"})
+    make_user(client, "staff-user")
+    me = client.get("/api/auth/me").json()
+    assert me["role"] == "staff" and me["is_admin"] is True
+    assert client.get("/api/admin/notices").status_code == 200
+
+
+def test_role_labels(monkeypatch):
+    monkeypatch.setattr(config, "ADMIN_USERNAMES", {"a"})
+    monkeypatch.setattr(config, "STAFF_USERNAMES", {"a", "b"})
+    assert [config.role_of(n) for n in ("a", "b", "c", None)] == ["admin", "staff", "student", "student"]
+
+
+def test_summary_counts_and_application_list(client):  # noqa: F811
+    uid = make_user(client)
+    assert client.get("/api/auth/me").json()["role"] == "student"
+    notice_id = seed(client.conn, "1", "공지", category="취업·진로", deadline="2099-11-13",
+                     events=[deadline_event("2099-11-13")])
+    client.post(f"/api/users/{uid}/notices/{notice_id}/schedule")
+    client.put(f"/api/users/{uid}/notices/{notice_id}/application", json={"values": {"student_no": "1"}})
+    client.get(f"/api/users/{uid}/alerts")
+
+    data = client.get(f"/api/users/{uid}/summary").json()
+    assert data == {"subscriptions": 3, "upcoming": 1, "applications": 1, "unread_alerts": 1}
+    listed = client.get(f"/api/users/{uid}/applications").json()
+    assert listed[0]["notice_id"] == notice_id and listed[0]["status"] == "draft"
+    assert TestClient(main.app).get(f"/api/users/{uid}/summary").status_code == 401
+
+
+def test_alert_inbox_read_and_delete(client):  # noqa: F811
+    uid = make_user(client)
+    first = seed(client.conn, "1", "첫 공지", category="취업·진로")
+    seed(client.conn, "2", "둘째 공지", category="취업·진로")
+    url = f"/api/users/{uid}/alerts"
+
+    alerts = client.get(url).json()
+    assert len(alerts) == 2 and alerts[0]["sender"] == "영대소식" and not alerts[0]["read"]
+    target = next(a for a in alerts if a["notice_id"] == first)
+
+    assert client.post(f"{url}/read", json={"ids": [target["id"]]}).status_code == 204
+    states = {a["notice_id"]: a["read"] for a in client.get(url).json()}
+    assert states[first] == 1 and sum(states.values()) == 1
+
+    assert client.post(f"{url}/delete", json={"ids": [target["id"]]}).status_code == 204
+    remaining = client.get(url).json()  # 다시 조회해도 지운 알림이 되살아나지 않는다
+    assert [a["notice_id"] for a in remaining] == [n for n in [first + 1]]
+    assert client.get(f"/api/users/{uid}/summary").json()["unread_alerts"] == 1
+
+    assert client.post(f"{url}/read").status_code == 204
+    assert client.get(f"/api/users/{uid}/summary").json()["unread_alerts"] == 0
+
+
+def test_alerts_of_others_are_not_touched(client):  # noqa: F811
+    uid = make_user(client)
+    seed(client.conn, "1", "공지", category="취업·진로")
+    alert_id = client.get(f"/api/users/{uid}/alerts").json()[0]["id"]
+    other = TestClient(main.app)
+    second = make_user(other, "second-user")
+    assert other.post(f"/api/users/{second}/alerts/delete", json={"ids": [alert_id]}).status_code == 204
+    assert len(client.get(f"/api/users/{uid}/alerts").json()) == 1
+    assert other.post(f"/api/users/{uid}/alerts/delete", json={"ids": [alert_id]}).status_code == 403
+
+
 def test_publish_requires_title_and_known_file(office):
     assert office.post("/api/admin/notices", json={"title": " ", "analysis": analysis()}).status_code == 422
     body = {"title": "공지", "analysis": analysis(), "upload": {"file_id": "missing", "name": "a.pdf"}}

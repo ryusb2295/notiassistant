@@ -139,9 +139,13 @@ def run(conn: sqlite3.Connection, limit: int = 15, source_ids: list[str] | None 
     if llm is None:
         log.warning("LLM 키가 없어 규칙 분석만 실행합니다.")
     fetcher = crawler.Fetcher()
+    # 학과 게시판은 100곳이 넘어 구독자가 있는 곳만 수집해 AI 호출 한도를 아낀다.
+    wanted = {row[0] for row in conn.execute("SELECT DISTINCT source_id FROM subscriptions")}
     result = {}
     for source in config.SOURCES:
         if source.kind == "direct" or (source_ids and source.id not in source_ids):
+            continue
+        if source.kind == "dept" and not source_ids and source.id not in wanted:
             continue
         try:
             result[source.id] = crawl_source(conn, fetcher, source, limit, llm)

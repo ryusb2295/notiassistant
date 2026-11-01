@@ -133,9 +133,20 @@ def _record_failure(conn: sqlite3.Connection, username: str) -> None:
         )
 
 
+def sync_department_boards(conn: sqlite3.Connection, user_id: str, department: str) -> None:
+    """학과 게시판 구독을 내 전공과 소속 학부로 맞춘다."""
+    current = {r["source_id"] for r in conn.execute("SELECT source_id FROM subscriptions WHERE user_id = ?", (user_id,))}
+    for source_id in current:
+        if config.SOURCE_BY_ID.get(source_id) and config.SOURCE_BY_ID[source_id].kind == "dept":
+            conn.execute("DELETE FROM subscriptions WHERE user_id = ? AND source_id = ?", (user_id, source_id))
+    for source_id in config.department_source_ids(department):
+        conn.execute("INSERT OR IGNORE INTO subscriptions VALUES (?, ?)", (user_id, source_id))
+
+
 def _load(conn: sqlite3.Connection, user_id: str) -> dict:
     user = db.row_to_user(conn.execute("SELECT * FROM users WHERE id = ?", (user_id,)).fetchone())
-    return {**user, "is_admin": user["username"] in config.ADMIN_USERNAMES}
+    role = config.role_of(user["username"])
+    return {**user, "role": role, "is_admin": role != "student"}
 
 
 @router.post("/signup", status_code=201)
@@ -157,6 +168,7 @@ def signup(body: SignupIn, response: Response, conn: sqlite3.Connection = Depend
                  hash_password(body.password), _now()),
             )
             conn.execute("INSERT INTO subscriptions VALUES (?, 'yu-news')", (user_id,))
+            sync_department_boards(conn, user_id, body.department)
     except sqlite3.IntegrityError as exc:
         raise HTTPException(409, "이미 사용 중인 아이디입니다") from exc
     _start_session(conn, response, user_id)

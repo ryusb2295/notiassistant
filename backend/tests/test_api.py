@@ -176,6 +176,47 @@ def test_health_and_security_headers(client):
     assert "frame-ancestors" in response.headers["content-security-policy"]
 
 
+def department_boards(monkeypatch):
+    sources = {
+        "ice": config.Source("ice", "정보통신공학과", "학과 공지", "https://x/ice", "dept"),
+        "computer": config.Source("computer", "컴퓨터학부", "학과 공지", "https://x/computer", "dept"),
+        "math": config.Source("math", "수학과", "학과 공지", "https://x/math", "dept"),
+    }
+    monkeypatch.setattr(config, "SOURCE_BY_ID", {**config.SOURCE_BY_ID, **sources})
+    monkeypatch.setattr(config, "DEPARTMENT_SOURCES", {
+        "정보통신공학전공": "ice", "컴퓨터학부": "computer", "수학과": "math",
+    })
+
+
+def test_major_and_parent_boards_are_subscribed_and_count_as_mine(client, monkeypatch):
+    department_boards(monkeypatch)
+    uid = make_user(client, interests=[])
+    sources = client.get(f"/api/users/{uid}/sources").json()
+    assert [s["id"] for s in sources[:2]] == ["ice", "computer"]
+    assert all(s["subscribed"] for s in sources[:2])
+
+    major = seed(client.conn, "1", "전공 공지", source="ice")
+    school = seed(client.conn, "2", "학부 공지", source="computer")
+    other = seed(client.conn, "3", "다른 학과 공지", source="math")
+    blocked = seed(client.conn, "4", "1학년 전용", source="computer", grades=[1])
+
+    feed = client.get(f"/api/users/{uid}/feed").json()
+    mine = {card["id"]: card["reason"] for card in feed["mine"]}
+    assert mine == {major: "내 학과 공지", school: "내 학과 공지"}
+    assert other not in mine and blocked not in mine
+    assert feed["hidden_count"] == 1
+
+
+def test_changing_department_replaces_department_boards(client, monkeypatch):
+    department_boards(monkeypatch)
+    uid = make_user(client)
+    assert client.put(f"/api/users/{uid}/subscriptions/swedu").status_code == 204
+    body = {"name": "승범", "department": "수학과", "grade": 3, "interests": []}
+    assert client.patch(f"/api/users/{uid}", json=body).status_code == 200
+    subscribed = {s["id"] for s in client.get(f"/api/users/{uid}/sources").json() if s["subscribed"]}
+    assert subscribed == {"yu-news", "swedu", "math"}
+
+
 def test_passwords_are_hashed():
     stored = auth.hash_password("test-password")
     assert "test-password" not in stored
@@ -218,8 +259,9 @@ def test_feed_drops_old_notices_without_deadline(client):
 def test_subscribe_adds_source_and_recommends(client):
     uid = make_user(client)
     sources = client.get(f"/api/users/{uid}/sources").json()
-    assert [s["id"] for s in sources if s["recommended"]] == ["ice", "swedu", "aibootcamp", "rise"]
+    assert [s["id"] for s in sources if s["recommended"]] == ["ice", "computer", "swedu", "aibootcamp", "rise"]
     assert next(s for s in sources if s["id"] == "yu-news")["subscribed"]
+    assert {"anchor", "globalhuss", "volunteer", "intl"} <= {s["id"] for s in sources}
 
     notice_id = seed(client.conn, "1", "사업단 공지", source="swedu", category="취업·진로")
     assert client.get(f"/api/users/{uid}/feed").json()["match_count"] == 0

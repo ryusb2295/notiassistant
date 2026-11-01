@@ -6,7 +6,7 @@ const props = defineProps({ sources: { type: Array, required: true } })
 
 const groups = computed(() => [
   { label: '내 학과 추천', items: props.sources.filter((s) => s.recommended) },
-  { label: '전체 학생 대상', items: props.sources.filter((s) => !s.recommended) },
+  { label: '다른 사업단·기관', items: props.sources.filter((s) => !s.recommended) },
 ])
 
 async function toggle(source) {

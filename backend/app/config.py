@@ -2,6 +2,7 @@
 from __future__ import annotations
 
 import hashlib
+import json
 import os
 from dataclasses import dataclass
 from pathlib import Path
@@ -15,6 +16,13 @@ DB_PATH = Path(os.getenv("NOTI_DB", BACKEND_DIR / "data" / "noti.sqlite3"))
 ATTACHMENT_CACHE = BACKEND_DIR / "data" / "attachments"
 COOKIE_SECURE = os.getenv("COOKIE_SECURE", "") == "1"  # HTTPS로 배포할 때 1
 ADMIN_USERNAMES = {name.strip() for name in os.getenv("ADMIN_USERNAMES", "").split(",") if name.strip()}
+STAFF_USERNAMES = {name.strip() for name in os.getenv("STAFF_USERNAMES", "").split(",") if name.strip()}
+
+
+def role_of(username: str | None) -> str:
+    if username in ADMIN_USERNAMES:
+        return "admin"
+    return "staff" if username in STAFF_USERNAMES else "student"
 LLM_PROVIDER = os.getenv("LLM_PROVIDER", "")  # openai, claude, rules. 비우면 키로 판단
 CLAUDE_MODEL = os.getenv("CLAUDE_MODEL", "claude-opus-5-5")
 OPENAI_MODEL = os.getenv("OPENAI_MODEL", "gpt-4o-mini")
@@ -49,6 +57,14 @@ SOURCES: tuple[Source, ...] = (
            "https://www.yu.ac.kr/aibootcamp/board/notice.do", "program"),
     Source("rise", "RISE사업단", "창업밸리 · 지역혁신 LAB · 실무 인재",
            "https://www.yu.ac.kr/rise/board/notice.do", "program"),
+    Source("anchor", "앵커사업단", "YUnicorn 창업 · MEGA · REGO · 대학주도 AX",
+           "https://anchor.yu.ac.kr/anchor/board/notice.do", "program"),
+    Source("globalhuss", "HUSS글로벌공생사업단", "글로벌공생 · 디지털 HUSS · 융합전공",
+           "https://www.yu.ac.kr/globalhuss/notice/notice.do", "program"),
+    Source("volunteer", "사회공헌단", "해외자원봉사 · 사회공헌 공모전",
+           "https://volunteer.yu.ac.kr/volunteer/news/notice.do", "program"),
+    Source("intl", "국제협력팀", "교환학생 · 해외 파견",
+           "https://intl.yu.ac.kr/intl/bulltein/notice.do", "program"),
     Source("direct", "행정실 공지", "공지비서에 직접 게시한 공지", "", "direct"),
     Source("ice", "정보통신공학과", "학과 공지",
            "https://www.yu.ac.kr/ice/board/notice.do", "dept"),
@@ -109,7 +125,24 @@ ALIASES = {
     "소프트웨어응용학부": ("SW응용학부",),
     "자동차소프트웨어학과": ("자동차SW학과",),
 }
-DEPARTMENT_SOURCES = {"정보통신공학전공": "ice"}
+
+# scripts/discover_boards.py가 만든 학과별 공지 게시판 목록이다.
+_boards_file = Path(__file__).with_name("department_boards.json")
+DEPARTMENT_BOARDS: dict[str, dict[str, str]] = (
+    json.loads(_boards_file.read_text(encoding="utf-8")) if _boards_file.exists() else {}
+)
+DEPARTMENT_SOURCES = {"정보통신공학전공": "ice"} | {name: b["id"] for name, b in DEPARTMENT_BOARDS.items()}
+
+# 여러 전공이 함께 쓰는 게시판은 학부 이름으로 보여준다.
+SHARED_BOARD_NAMES = {"arts": "음악학부", "yumc": "의과대학"}
+
+_known_ids = {s.id for s in SOURCES}
+for _name, _board in DEPARTMENT_BOARDS.items():
+    if _board["id"] not in _known_ids:
+        _known_ids.add(_board["id"])
+        _label = SHARED_BOARD_NAMES.get(_board["id"], _name)
+        SOURCES += (Source(_board["id"], _label, "학과 공지", _board["url"], "dept"),)
+SOURCE_BY_ID = {s.id: s for s in SOURCES}
 
 
 @dataclass(frozen=True)
@@ -147,6 +180,15 @@ def _departments() -> tuple[Department, ...]:
 
 DEPARTMENTS = _departments()
 DEPARTMENT_BY_NAME = {d.name: d for d in DEPARTMENTS}
+
+
+def department_source_ids(name: str) -> list[str]:
+    """내 전공과 소속 학부의 게시판. 전공 게시판이 앞에 온다."""
+    department = DEPARTMENT_BY_NAME.get(name)
+    if department is None:
+        return []
+    ids = [DEPARTMENT_SOURCES.get(department.name), DEPARTMENT_SOURCES.get(department.parent)]
+    return list(dict.fromkeys(i for i in ids if i))
 
 CATEGORIES = ("장학", "취업·진로", "교육·특강", "경진대회", "대외활동", "학사", "행사", "자격증", "기타")
 INTERESTS = ("장학", "취업·진로", "교육·특강", "경진대회", "대외활동", "자격증")

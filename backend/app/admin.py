@@ -26,7 +26,7 @@ def require_admin(
     user_id: str = Depends(auth.current_user_id), conn: sqlite3.Connection = Depends(db.get_conn)
 ) -> str:
     row = conn.execute("SELECT username FROM users WHERE id = ?", (user_id,)).fetchone()
-    if row is None or row["username"] not in config.ADMIN_USERNAMES:
+    if row is None or config.role_of(row["username"]) == "student":
         raise HTTPException(403, "행정실 계정만 사용할 수 있습니다")
     return user_id
 

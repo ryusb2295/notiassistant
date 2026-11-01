@@ -62,6 +62,25 @@ def test_rule_notices_are_upgraded_and_keep_user_schedule(tmp_path):
     assert fetcher.pages == pages
 
 
+def test_department_boards_are_crawled_only_with_subscribers(tmp_path, monkeypatch):
+    conn = db.connect(tmp_path / "t.sqlite3")
+    dept = config.Source("math", "수학과", "학과 공지", "https://www.yu.ac.kr/math/board/notice.do", "dept")
+    busy = config.Source("stat", "통계학과", "학과 공지", "https://www.yu.ac.kr/stat/board/notice.do", "dept")
+    monkeypatch.setattr(config, "SOURCES", (dept, busy))
+    monkeypatch.setattr(pipeline.analyzer, "make_llm", lambda: None)
+    crawled = []
+    monkeypatch.setattr(pipeline, "crawl_source", lambda c, f, source, limit, llm: crawled.append(source.id) or 0)
+    conn.execute("INSERT INTO users (id, name, department, grade) VALUES ('u', 'a', '통계학과', 1)")
+    conn.execute("INSERT INTO subscriptions VALUES ('u', 'stat')")
+    conn.commit()
+
+    pipeline.run(conn)
+    assert crawled == ["stat"]
+    crawled.clear()
+    pipeline.run(conn, source_ids=["math"])  # 직접 지정하면 수집한다
+    assert crawled == ["math"]
+
+
 def test_personal_files_are_detected():
     assert pipeline.is_personal_file("서류전형 합격자(면접 대상자) 명단.xlsx")
     assert not pipeline.is_personal_file("참가 신청서 양식_학생.hwp")

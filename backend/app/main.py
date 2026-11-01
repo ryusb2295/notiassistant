@@ -9,22 +9,30 @@ from contextlib import asynccontextmanager
 from datetime import date, timedelta
 from functools import lru_cache
 from pathlib import Path
-from typing import Any
+from typing import Any, Optional
 from urllib.parse import quote
 
 from fastapi import APIRouter, Depends, FastAPI, HTTPException, Request, Response
 from fastapi.responses import FileResponse
 from fastapi.staticfiles import StaticFiles
+from pydantic import BaseModel
 
 from . import admin, analyzer, applications, auth, config, crawler, db, parsers, pipeline, schedule
 from .auth import ProfileIn
 from .db import get_conn
-from .matcher import GENERAL, MATCH, match_notice
+from .matcher import GENERAL, MATCH, MatchResult, match_notice
 
 log = logging.getLogger(__name__)
 URGENT_DAYS = 7
 NEW_DAYS = 7
 STALE_DAYS = 30  # 마감일이 없는 공지를 피드에 남기는 기간
+# 홈 화면 설치에 필요한 파일. 앱 경로로 처리되지 않게 따로 돌려준다.
+PUBLIC_FILES = {
+    "manifest.webmanifest": "application/manifest+json",
+    "icon-192.png": "image/png",
+    "icon-512.png": "image/png",
+    "apple-touch-icon.png": "image/png",
+}
 SECURITY_HEADERS = {
     "X-Content-Type-Options": "nosniff",
     "X-Frame-Options": "SAMEORIGIN",
@@ -67,6 +75,10 @@ def today() -> date:
     return date.today()
 
 
+class AlertIds(BaseModel):
+    ids: Optional[list[int]] = None
+
+
 def load_user(conn: sqlite3.Connection, user_id: str) -> dict[str, Any]:
     row = conn.execute("SELECT * FROM users WHERE id = ?", (user_id,)).fetchone()
     if row is None:
@@ -82,9 +94,7 @@ def subscribed_ids(conn: sqlite3.Connection, user_id: str) -> list[str]:
 def recommended(department: str) -> list[config.Source]:
     """학과가 참여하는 사업단을 앞세운 게시판 목록."""
     info = config.DEPARTMENT_BY_NAME.get(department)
-    sources = []
-    if info and info.source_id:
-        sources.append(config.SOURCE_BY_ID[info.source_id])
+    sources = [config.SOURCE_BY_ID[i] for i in config.department_source_ids(department)]
     if info and info.sw_group:
         sources.append(config.SOURCE_BY_ID["swedu"])
         sources.append(config.SOURCE_BY_ID["aibootcamp"])
@@ -95,6 +105,9 @@ def recommended(department: str) -> list[config.Source]:
 def notice_card(row: sqlite3.Row, user: dict[str, Any], now: date) -> dict[str, Any]:
     analysis = json.loads(row["data"])
     match = match_notice(user, analysis)
+    # 내 전공과 소속 학부 게시판의 공지는 대상 제한이 없어도 내 공지로 본다.
+    if match.status == GENERAL and row["source_id"] in config.department_source_ids(user["department"]):
+        match = MatchResult(MATCH, "내 학과 공지")
     deadline = analysis.get("deadline")
     return {
         "id": row["id"],
@@ -178,7 +191,7 @@ def get_user(user_id: str, conn: sqlite3.Connection = Depends(get_conn)):
 
 @users.patch("")
 def update_user(user_id: str, body: ProfileIn, conn: sqlite3.Connection = Depends(get_conn)):
-    load_user(conn, user_id)
+    previous = load_user(conn, user_id)["department"]
     if body.department not in config.DEPARTMENT_BY_NAME:
         raise HTTPException(422, "목록에 없는 학과입니다")
     with conn:
@@ -186,7 +199,31 @@ def update_user(user_id: str, body: ProfileIn, conn: sqlite3.Connection = Depend
             "UPDATE users SET name = ?, department = ?, grade = ?, interests = ? WHERE id = ?",
             (body.name, body.department, body.grade, json.dumps(body.interests, ensure_ascii=False), user_id),
         )
+        if body.department != previous:
+            auth.sync_department_boards(conn, user_id, body.department)
     return load_user(conn, user_id)
+
+
+@users.get("/summary")
+def summary(user_id: str, conn: sqlite3.Connection = Depends(get_conn), now: date = Depends(today)):
+    count = lambda sql, *args: conn.execute(sql, (user_id, *args)).fetchone()[0]
+    return {
+        "subscriptions": count("SELECT count(*) FROM subscriptions WHERE user_id = ?"),
+        "upcoming": count("SELECT count(*) FROM schedule_items WHERE user_id = ? AND date >= ?", now.isoformat()),
+        "applications": count("SELECT count(*) FROM application_drafts WHERE user_id = ?"),
+        "unread_alerts": count("SELECT count(*) FROM alerts WHERE user_id = ? AND read = 0 AND deleted = 0"),
+    }
+
+
+@users.get("/applications")
+def list_applications(user_id: str, conn: sqlite3.Connection = Depends(get_conn)):
+    rows = conn.execute(
+        "SELECT d.notice_id, d.status, d.updated_at, n.title, a.deadline FROM application_drafts d "
+        "JOIN notices n ON n.id = d.notice_id JOIN analyses a ON a.notice_id = n.id "
+        "WHERE d.user_id = ? ORDER BY d.updated_at DESC",
+        (user_id,),
+    ).fetchall()
+    return [dict(row) for row in rows]
 
 
 @users.get("/sources")
@@ -334,18 +371,35 @@ def get_alerts(user_id: str, conn: sqlite3.Connection = Depends(get_conn), now: 
     schedule.generate_deadline_alerts(conn, user_id, now)
     schedule.generate_notice_alerts(conn, user_id, build_feed(conn, user, now))
     rows = conn.execute(
-        "SELECT id, notice_id, title, body, read, created_at FROM alerts "
-        "WHERE user_id = ? ORDER BY read, id DESC LIMIT 50",
+        "SELECT a.id, a.notice_id, a.title, a.body, a.read, a.created_at, n.source_id "
+        "FROM alerts a JOIN notices n ON n.id = a.notice_id "
+        "WHERE a.user_id = ? AND a.deleted = 0 ORDER BY a.id DESC LIMIT 100",
         (user_id,),
     ).fetchall()
-    return [dict(row) for row in rows]
+    return [{**dict(row), "sender": config.SOURCE_BY_ID[row["source_id"]].name} for row in rows]
+
+
+def _alert_scope(body: AlertIds | None) -> tuple[str, list[int]]:
+    """ids가 없으면 전체를 뜻한다."""
+    if body is None or body.ids is None:
+        return "", []
+    marks = ",".join("?" for _ in body.ids)
+    return f" AND id IN ({marks})", body.ids
 
 
 @users.post("/alerts/read", status_code=204)
-def read_alerts(user_id: str, conn: sqlite3.Connection = Depends(get_conn)):
-    load_user(conn, user_id)
+def read_alerts(user_id: str, body: AlertIds | None = None, conn: sqlite3.Connection = Depends(get_conn)):
+    clause, ids = _alert_scope(body)
     with conn:
-        conn.execute("UPDATE alerts SET read = 1 WHERE user_id = ?", (user_id,))
+        conn.execute(f"UPDATE alerts SET read = 1 WHERE user_id = ?{clause}", (user_id, *ids))
+
+
+@users.post("/alerts/delete", status_code=204)
+def delete_alerts(user_id: str, body: AlertIds, conn: sqlite3.Connection = Depends(get_conn)):
+    # 행을 지우면 다음 조회 때 같은 알림이 다시 만들어지므로 숨김 표시만 한다.
+    clause, ids = _alert_scope(body)
+    with conn:
+        conn.execute(f"UPDATE alerts SET deleted = 1, read = 1 WHERE user_id = ?{clause}", (user_id, *ids))
 
 
 def preview_kind(ext: str) -> str:
@@ -452,5 +506,7 @@ if DIST_DIR.exists():
     def spa(path: str):
         if path.startswith("api/"):
             raise HTTPException(404, "없는 경로입니다")
+        if path in PUBLIC_FILES:
+            return FileResponse(DIST_DIR / path, media_type=PUBLIC_FILES[path])
         # 파일명에 해시가 붙는 assets와 달리 index.html은 항상 새로 받아 예전 화면이 남지 않게 한다.
         return FileResponse(DIST_DIR / "index.html", headers={"Cache-Control": "no-cache"})

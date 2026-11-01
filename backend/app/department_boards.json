@@ -1,0 +1,334 @@
+{
+  "건축학부": {
+    "id": "arch",
+    "url": "https://arch.yu.ac.kr/arch/notice/notice.do"
+  },
+  "경영학과": {
+    "id": "biz",
+    "url": "https://biz.yu.ac.kr/biz/board/notice.do"
+  },
+  "경제금융학부": {
+    "id": "econ",
+    "url": "https://econ.yu.ac.kr/econ/dept/undergrad-notice.do"
+  },
+  "경찰행정학과": {
+    "id": "police",
+    "url": "https://police.yu.ac.kr/police/board/notice.do"
+  },
+  "관현악전공": {
+    "id": "arts",
+    "url": "https://arts.yu.ac.kr/arts/community/notice.do"
+  },
+  "교육학과": {
+    "id": "eduwm",
+    "url": "https://eduwm.yu.ac.kr/eduwm/community/notice.do"
+  },
+  "국어교육과": {
+    "id": "koredu21",
+    "url": "https://koredu21.yu.ac.kr/koredu21/board/notice.do"
+  },
+  "국제한국어교육전공": {
+    "id": "koreanedu",
+    "url": "https://koreanedu.yu.ac.kr/koreanedu/notice/notice.do"
+  },
+  "군사학과": {
+    "id": "ms",
+    "url": "https://ms.yu.ac.kr/ms/community/notice.do"
+  },
+  "글로벌교양학부": {
+    "id": "gge",
+    "url": "https://gge.yu.ac.kr/gge/notice/notice.do"
+  },
+  "글로벌비즈니스학과": {
+    "id": "gbusiness",
+    "url": "https://gbusiness.yu.ac.kr/gbusiness/news/notice.do"
+  },
+  "글로벌학부": {
+    "id": "globalkr",
+    "url": "https://globalkr.yu.ac.kr/globalkr/board/notice.do"
+  },
+  "기계공학부": {
+    "id": "me",
+    "url": "https://me.yu.ac.kr/me/notice/notice.do"
+  },
+  "도시공학과": {
+    "id": "urban",
+    "url": "https://urban.yu.ac.kr/urban/board/notice.do"
+  },
+  "독일언어문화전공": {
+    "id": "gori",
+    "url": "https://gori.yu.ac.kr/gori/community/notice.do"
+  },
+  "로봇공학과": {
+    "id": "robotics",
+    "url": "https://robotics.yu.ac.kr/robotics/community/notice.do"
+  },
+  "무역학부": {
+    "id": "trade",
+    "url": "https://trade.yu.ac.kr/trade/news/notice.do"
+  },
+  "무용학전공": {
+    "id": "dance",
+    "url": "https://dance.yu.ac.kr/dance/community/notice.do"
+  },
+  "문화인류학과": {
+    "id": "saram",
+    "url": "https://saram.yu.ac.kr/saram/notice/notice.do"
+  },
+  "물리학과": {
+    "id": "physics",
+    "url": "https://physics.yu.ac.kr/physics/bachelor/notice.do"
+  },
+  "미디어커뮤니케이션학과": {
+    "id": "mnc",
+    "url": "https://mnc.yu.ac.kr/mnc/community/notice.do"
+  },
+  "미래자동차공학과": {
+    "id": "automotive",
+    "url": "https://automotive.yu.ac.kr/automotive/community/academic-notice.do"
+  },
+  "사회학과": {
+    "id": "socio",
+    "url": "https://socio.yu.ac.kr/socio/info/notice.do"
+  },
+  "산림자원학과": {
+    "id": "forestry",
+    "url": "https://forestry.yu.ac.kr/forestry/community/notice.do"
+  },
+  "산업경영학과": {
+    "id": "im",
+    "url": "https://im.yu.ac.kr/im/board/notice.do"
+  },
+  "산업디자인학과": {
+    "id": "id",
+    "url": "https://id.yu.ac.kr/id/news/notice.do"
+  },
+  "생명공학과": {
+    "id": "bt1",
+    "url": "https://bt1.yu.ac.kr/bt1/community/biotechnology-board.do"
+  },
+  "생명과학과": {
+    "id": "lifesciences",
+    "url": "https://lifesciences.yu.ac.kr/lifesciences/intro/notice.do"
+  },
+  "성악전공": {
+    "id": "arts",
+    "url": "https://arts.yu.ac.kr/arts/community/notice.do"
+  },
+  "소프트웨어융합전공": {
+    "id": "sw",
+    "url": "https://sw.yu.ac.kr/sw/notice/notice.do"
+  },
+  "소프트웨어응용학부": {
+    "id": "appliedsw",
+    "url": "https://appliedsw.yu.ac.kr/appliedsw/notice/notice.do"
+  },
+  "수학과": {
+    "id": "math",
+    "url": "https://math.yu.ac.kr/math/community/notice.do"
+  },
+  "수학교육과": {
+    "id": "mathedu",
+    "url": "https://mathedu.yu.ac.kr/mathedu/info/notice.do"
+  },
+  "스마트모빌리티학과": {
+    "id": "smartmobility",
+    "url": "https://smartmobility.yu.ac.kr/smartmobility/community/notice.do"
+  },
+  "시각디자인학과": {
+    "id": "vd",
+    "url": "https://vd.yu.ac.kr/vd/community/board.do"
+  },
+  "식품공학과": {
+    "id": "foodscience",
+    "url": "https://foodscience.yu.ac.kr/foodscience/community/notice.do"
+  },
+  "식품영양학과": {
+    "id": "food",
+    "url": "https://food.yu.ac.kr/food/bachelor/notice.do"
+  },
+  "심리학과": {
+    "id": "psy",
+    "url": "https://psy.yu.ac.kr/psy/notice/notice.do"
+  },
+  "약학부": {
+    "id": "pharm",
+    "url": "https://pharm.yu.ac.kr/pharm/community/notice.do"
+  },
+  "역사학과": {
+    "id": "yuhistory",
+    "url": "https://yuhistory.yu.ac.kr/yuhistory/bulletin-board/notice.do"
+  },
+  "영어교육과": {
+    "id": "dele",
+    "url": "https://dele.yu.ac.kr/dele/community/notice.do"
+  },
+  "영어영문학과": {
+    "id": "engl",
+    "url": "https://engl.yu.ac.kr/engl/board/notice.do"
+  },
+  "영어통번역전공": {
+    "id": "itenglish",
+    "url": "https://itenglish.yu.ac.kr/itenglish/board/notice.do"
+  },
+  "원예생명과학과": {
+    "id": "hort",
+    "url": "https://hort.yu.ac.kr/hort/community/notice.do"
+  },
+  "유럽언어문화학부": {
+    "id": "europe",
+    "url": "https://europe.yu.ac.kr/europe/community/notice.do"
+  },
+  "유아교육과": {
+    "id": "child",
+    "url": "https://child.yu.ac.kr/child/board/notice.do"
+  },
+  "음악학부": {
+    "id": "arts",
+    "url": "https://arts.yu.ac.kr/arts/community/notice.do"
+  },
+  "응용중국어통번역전공": {
+    "id": "trans",
+    "url": "https://trans.yu.ac.kr/trans/community/notice.do"
+  },
+  "의류패션학과": {
+    "id": "fashion",
+    "url": "https://fashion.yu.ac.kr/fashion/board/notice.do"
+  },
+  "의생명공학과": {
+    "id": "mbt",
+    "url": "https://mbt.yu.ac.kr/mbt/community/notice.do"
+  },
+  "의예과": {
+    "id": "yumc",
+    "url": "https://yumc.yu.ac.kr/yumc/support/notice.do"
+  },
+  "의학과": {
+    "id": "yumc",
+    "url": "https://yumc.yu.ac.kr/yumc/support/notice.do"
+  },
+  "일어일문학과": {
+    "id": "japan",
+    "url": "https://japan.yu.ac.kr/japan/community/notice.do"
+  },
+  "자동차소프트웨어학과": {
+    "id": "asw",
+    "url": "https://asw.yu.ac.kr/asw/notice/notice.do"
+  },
+  "전공자유선택학부": {
+    "id": "ccgs",
+    "url": "https://ccgs.yu.ac.kr/ccgs/support/notice.do"
+  },
+  "전기공학과": {
+    "id": "ee",
+    "url": "https://ee.yu.ac.kr/ee/board/department.do"
+  },
+  "전자공학과": {
+    "id": "electronics",
+    "url": "https://electronics.yu.ac.kr/electronics/community/notice.do"
+  },
+  "정보통신공학전공": {
+    "id": "ice",
+    "url": "https://ice.yu.ac.kr/ice/board/notice.do"
+  },
+  "정치외교학과": {
+    "id": "pol",
+    "url": "https://pol.yu.ac.kr/pol/board/notice.do"
+  },
+  "조경학과": {
+    "id": "land",
+    "url": "https://land.yu.ac.kr/land/community/notice.do"
+  },
+  "주거환경학과": {
+    "id": "yuhousing",
+    "url": "https://yuhousing.yu.ac.kr/yuhousing/certificate/notice-board.do"
+  },
+  "중국언어문화학과": {
+    "id": "china",
+    "url": "https://china.yu.ac.kr/china/intro/notice.do"
+  },
+  "차세대반도체학과": {
+    "id": "nextsemi",
+    "url": "https://nextsemi.yu.ac.kr/nextsemi/academic/notice.do"
+  },
+  "천마인재학부": {
+    "id": "honors",
+    "url": "https://honors.yu.ac.kr/honors/community/notice.do"
+  },
+  "철학과": {
+    "id": "phil",
+    "url": "https://phil.yu.ac.kr/phil/notice/notice.do"
+  },
+  "체육학전공": {
+    "id": "pe",
+    "url": "https://pe.yu.ac.kr/pe/board/notice.do"
+  },
+  "컴퓨터공학전공": {
+    "id": "cse",
+    "url": "https://cse.yu.ac.kr/cse/community/notice.do"
+  },
+  "컴퓨터학부": {
+    "id": "computer",
+    "url": "https://computer.yu.ac.kr/computer/notice/notice.do"
+  },
+  "통계학과": {
+    "id": "sta",
+    "url": "https://sta.yu.ac.kr/sta/community/notice.do"
+  },
+  "트랜스아트과": {
+    "id": "transart",
+    "url": "https://transart.yu.ac.kr/transart/community/notice.do"
+  },
+  "특수체육교육과": {
+    "id": "spe",
+    "url": "https://spe.yu.ac.kr/spe/board/notice.do"
+  },
+  "파이버시스템공학과": {
+    "id": "textiles",
+    "url": "https://textiles.yu.ac.kr/textiles/board/notice.do"
+  },
+  "프랑스어문전공": {
+    "id": "french",
+    "url": "https://french.yu.ac.kr/french/community/notice.do"
+  },
+  "피아노전공": {
+    "id": "arts",
+    "url": "https://arts.yu.ac.kr/arts/community/notice.do"
+  },
+  "한문교육과": {
+    "id": "eduhankyo",
+    "url": "https://eduhankyo.yu.ac.kr/eduhankyo/community/notice.do"
+  },
+  "항공운송학과": {
+    "id": "daspo",
+    "url": "https://daspo.yu.ac.kr/daspo/community/notice.do"
+  },
+  "행정학과": {
+    "id": "pa",
+    "url": "https://pa.yu.ac.kr/pa/board/notice.do"
+  },
+  "화학공학부": {
+    "id": "che",
+    "url": "https://che.yu.ac.kr/che/notice/notice.do"
+  },
+  "화학과": {
+    "id": "chem",
+    "url": "https://chem.yu.ac.kr/chem/board/notice.do"
+  },
+  "환경공학과": {
+    "id": "enveng",
+    "url": "https://enveng.yu.ac.kr/enveng/board/notice.do"
+  },
+  "회계세무학과": {
+    "id": "acc",
+    "url": "https://acc.yu.ac.kr/acc/notice/notice.do"
+  },
+  "회화과": {
+    "id": "painting",
+    "url": "https://painting.yu.ac.kr/painting/community/notice.do"
+  },
+  "휴먼서비스학과": {
+    "id": "humanservice",
+    "url": "https://humanservice.yu.ac.kr/humanservice/community/notice.do"
+  }
+}
