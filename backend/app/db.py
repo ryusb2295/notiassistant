@@ -17,7 +17,21 @@ CREATE TABLE IF NOT EXISTS users (
     interests TEXT NOT NULL DEFAULT '[]',
     username TEXT,
     password_hash TEXT,
+    consented_at TEXT,
     created_at TEXT NOT NULL DEFAULT (datetime('now'))
+);
+CREATE TABLE IF NOT EXISTS application_drafts (
+    user_id TEXT NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+    notice_id INTEGER NOT NULL REFERENCES notices(id) ON DELETE CASCADE,
+    data TEXT NOT NULL,
+    status TEXT NOT NULL DEFAULT 'draft',
+    updated_at TEXT NOT NULL DEFAULT (datetime('now')),
+    PRIMARY KEY (user_id, notice_id)
+);
+CREATE TABLE IF NOT EXISTS login_failures (
+    username TEXT PRIMARY KEY,
+    failures INTEGER NOT NULL DEFAULT 0,
+    locked_until TEXT
 );
 CREATE TABLE IF NOT EXISTS sessions (
     token_hash TEXT PRIMARY KEY,
@@ -105,7 +119,7 @@ def connect(path: Path | str | None = None) -> sqlite3.Connection:
 def _migrate(conn: sqlite3.Connection) -> None:
     """로그인 도입 전에 만든 DB에 계정 컬럼을 더한다."""
     columns = {row["name"] for row in conn.execute("PRAGMA table_info(users)")}
-    for column in ("username", "password_hash"):
+    for column in ("username", "password_hash", "consented_at"):
         if column not in columns:
             conn.execute(f"ALTER TABLE users ADD COLUMN {column} TEXT")
     conn.execute("CREATE UNIQUE INDEX IF NOT EXISTS users_username ON users(username)")

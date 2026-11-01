@@ -192,6 +192,37 @@ dl { margin: 0; }
 }
 .interest.on .interest-check { background: var(--accent); }
 
+.consent { display: flex; align-items: center; gap: 10px; min-height: 44px; padding: 0 4px; font-size: 14px; }
+.consent input { width: 20px; height: 20px; flex: none; accent-color: var(--accent); }
+.policy { gap: 6px; }
+.policy h2 { font-size: 15px; margin-top: 8px; }
+.policy h2:first-child { margin-top: 0; }
+.policy p { font-size: 14px; line-height: 1.6; color: var(--ink-2); }
+.account { gap: 4px; align-items: stretch; }
+.account .link-btn { text-align: left; font-size: 14px; }
+.account-link { display: flex; align-items: center; }
+.link-btn.danger { color: var(--due); }
+.btn-danger { background: var(--due); }
+
+.textarea { height: auto; padding: 10px 12px; line-height: 1.5; resize: vertical; }
+.action-row { display: flex; flex-wrap: wrap; gap: 8px; }
+.apply-link { flex-direction: row; align-items: center; justify-content: space-between; gap: 12px; font-size: 15px; line-height: 1.5; }
+.main-flat { display: flex; flex-direction: column; gap: 12px; }
+.upload {
+  display: flex; flex-direction: column; align-items: center; gap: 4px; padding: 22px 16px; text-align: center;
+  background: var(--surface); border: 1.5px dashed var(--line-2); border-radius: 16px; cursor: pointer;
+}
+.upload:hover, .upload:focus-within { border-color: var(--accent); }
+.upload.busy { opacity: 0.6; cursor: default; }
+.upload input { position: absolute; width: 1px; height: 1px; opacity: 0; }
+.cardnews { background: var(--accent); color: #fff; border-radius: 16px; padding: 20px; display: flex; flex-direction: column; gap: 12px; }
+.cardnews-tag { align-self: flex-start; padding: 4px 10px; border-radius: 999px; background: #fff; color: var(--accent-ink); font-size: 13px; font-weight: 700; }
+.cardnews-title { font-size: 22px; line-height: 1.35; letter-spacing: -0.4px; overflow-wrap: anywhere; }
+.cardnews-rows { display: flex; flex-direction: column; gap: 6px; font-size: 14px; line-height: 1.5; }
+.cardnews-rows div { display: flex; gap: 10px; }
+.cardnews-rows dt { flex: none; font-weight: 700; }
+.cardnews-rows dd { margin: 0; min-width: 0; overflow-wrap: anywhere; }
+
 .auth-switch { display: flex; align-items: center; justify-content: center; gap: 2px; color: var(--ink-3); font-size: 13px; }
 
 .picker { position: relative; }

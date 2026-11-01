@@ -8,13 +8,16 @@ from typing import Any
 from urllib.parse import urlencode
 
 
+def short_title(title: str) -> str:
+    return re.sub(r"^((\[[^\]]*\]|\([^)]*\))\s*)+", "", title).strip()[:40]
+
+
 def notice_events(title: str, analysis: dict[str, Any]) -> list[dict[str, Any]]:
     """분석 일정에 신청 마감이 빠져 있으면 채운다. 마감 알림이 이 일정을 기준으로 동작한다."""
     events = list(analysis.get("events") or [])
     deadline = analysis.get("deadline")
     if deadline and not any(e["kind"] == "deadline" and e["date"] == deadline for e in events):
-        name = re.sub(r"^((\[[^\]]*\]|\([^)]*\))\s*)+", "", title).strip()[:40]
-        events.insert(0, {"title": f"{name} 신청 마감", "date": deadline, "end_date": None, "kind": "deadline"})
+        events.insert(0, {"title": f"{short_title(title)} 신청 마감", "date": deadline, "end_date": None, "kind": "deadline"})
     return events
 
 

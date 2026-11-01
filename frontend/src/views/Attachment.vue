@@ -70,7 +70,7 @@ async function loadText() {
     </template>
   </main>
   <footer v-if="file" class="foot">
-    <a :href="file.url" target="_blank" rel="noopener" class="btn btn-line" :class="{ 'btn-grow': file.personal }">학교 사이트</a>
+    <a v-if="!file.url.startsWith('upload:')" :href="file.url" target="_blank" rel="noopener" class="btn btn-line" :class="{ 'btn-grow': file.personal }">학교 사이트</a>
     <a v-if="!file.personal" :href="`${src}?download=true`" class="btn btn-grow">다운로드</a>
   </footer>
 </template>

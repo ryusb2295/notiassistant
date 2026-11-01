@@ -1,6 +1,7 @@
 """공지비서 설정: 게시판, 학과, 관심사 목록과 환경 변수."""
 from __future__ import annotations
 
+import hashlib
 import os
 from dataclasses import dataclass
 from pathlib import Path
@@ -13,6 +14,7 @@ load_dotenv(BACKEND_DIR / ".env")
 DB_PATH = Path(os.getenv("NOTI_DB", BACKEND_DIR / "data" / "noti.sqlite3"))
 ATTACHMENT_CACHE = BACKEND_DIR / "data" / "attachments"
 COOKIE_SECURE = os.getenv("COOKIE_SECURE", "") == "1"  # HTTPS로 배포할 때 1
+ADMIN_USERNAMES = {name.strip() for name in os.getenv("ADMIN_USERNAMES", "").split(",") if name.strip()}
 LLM_PROVIDER = os.getenv("LLM_PROVIDER", "")  # openai, claude, rules. 비우면 키로 판단
 CLAUDE_MODEL = os.getenv("CLAUDE_MODEL", "claude-opus-5-5")
 OPENAI_MODEL = os.getenv("OPENAI_MODEL", "gpt-4o-mini")
@@ -25,13 +27,17 @@ MAX_DOWNLOAD_BYTES = 20 * 1024 * 1024
 MAX_ATTACHMENTS_PER_NOTICE = 5
 
 
+def attachment_path(url: str) -> Path:
+    return ATTACHMENT_CACHE / hashlib.sha256(url.encode()).hexdigest()
+
+
 @dataclass(frozen=True)
 class Source:
     id: str
     name: str
     description: str
     url: str
-    kind: str  # base: 전원 기본, program: 사업단, dept: 학과
+    kind: str  # base: 전원 기본, program: 사업단, dept: 학과, direct: 행정실 직접 게시
 
 
 SOURCES: tuple[Source, ...] = (
@@ -43,6 +49,7 @@ SOURCES: tuple[Source, ...] = (
            "https://www.yu.ac.kr/aibootcamp/board/notice.do", "program"),
     Source("rise", "RISE사업단", "창업밸리 · 지역혁신 LAB · 실무 인재",
            "https://www.yu.ac.kr/rise/board/notice.do", "program"),
+    Source("direct", "행정실 공지", "공지비서에 직접 게시한 공지", "", "direct"),
     Source("ice", "정보통신공학과", "학과 공지",
            "https://www.yu.ac.kr/ice/board/notice.do", "dept"),
 )

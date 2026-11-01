@@ -14,12 +14,13 @@ const name = ref('')
 const department = ref('')
 const grade = ref(3)
 const interests = ref([])
+const agreed = ref(false)
 const error = ref('')
 const busy = ref(false)
 
 const isSignup = computed(() => mode.value === 'signup')
 const ready = computed(
-  () => username.value && password.value && (!isSignup.value || (name.value.trim() && department.value)),
+  () => username.value && password.value && (!isSignup.value || (name.value.trim() && department.value && agreed.value)),
 )
 
 onMounted(async () => {
@@ -47,6 +48,7 @@ async function submit() {
         department: department.value,
         grade: grade.value,
         interests: interests.value,
+        agreed: agreed.value,
       })
       router.push('/recommend')
     } else {
@@ -97,6 +99,10 @@ async function submit() {
         </div>
       </div>
       <InterestPicker v-model="interests" :options="meta.interests" />
+      <label class="consent">
+        <input v-model="agreed" type="checkbox" />
+        <span>개인정보 수집·이용에 동의합니다 <RouterLink to="/privacy" class="more">자세히 보기</RouterLink></span>
+      </label>
     </template>
     <p v-if="error" class="error" role="alert">{{ error }}</p>
     <button class="btn" :disabled="busy || !ready">{{ isSignup ? '다음' : '로그인' }}</button>

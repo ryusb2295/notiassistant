@@ -2,6 +2,7 @@
 import { computed, onMounted, ref } from 'vue'
 import { useRouter } from 'vue-router'
 import { api } from '../api'
+import CardNews from '../components/CardNews.vue'
 import Icon from '../components/Icon.vue'
 import { dDayLabel, longDate, shortDate } from '../format'
 
@@ -13,6 +14,7 @@ const busy = ref(false)
 
 const STATUS = { read: '읽음', unsupported: '지원하지 않는 형식', failed: '읽기 실패', needs_ai: 'AI 연결 시 읽기 가능', personal: '개인정보 보호로 분석 제외' }
 const isAi = computed(() => notice.value && notice.value.analyzer !== 'rules')
+const isOffice = computed(() => notice.value?.analyzer === 'admin')
 
 onMounted(async () => {
   try {
@@ -48,10 +50,12 @@ async function toggleSchedule() {
   <main class="main">
     <p v-if="error" class="error" role="alert">{{ error }}</p>
     <template v-if="notice">
+      <CardNews v-if="isOffice" :title="notice.title" :deadline="notice.deadline" :audience="notice.audience"
+        :benefit="notice.benefit || ''" :how="notice.how_to_apply || ''" />
       <section class="summary">
         <div class="summary-head">
-          <span class="summary-title"><Icon name="spark" :size="16" :width="2.2" />{{ isAi ? 'AI 요약' : '자동 추출' }}</span>
-          <span class="small">{{ isAi ? notice.found_in.join(', ') + '에서 추출' : '규칙 기반 · AI 미사용' }}</span>
+          <span class="summary-title"><Icon name="spark" :size="16" :width="2.2" />{{ isOffice ? '공지 요약' : isAi ? 'AI 요약' : '자동 추출' }}</span>
+          <span class="small">{{ isOffice ? '행정실 확인' : isAi ? notice.found_in.join(', ') + '에서 추출' : '규칙 기반 · AI 미사용' }}</span>
         </div>
         <ul><li v-for="line in notice.summary" :key="line">{{ line }}</li></ul>
       </section>
@@ -70,6 +74,11 @@ async function toggleSchedule() {
         <div v-if="notice.how_to_apply" class="row"><dt>신청 방법</dt><dd>{{ notice.how_to_apply }}</dd></div>
         <div class="row"><dt>판정</dt><dd :class="{ ok: notice.match === 'match' }">{{ notice.reason }}</dd></div>
       </dl>
+
+      <RouterLink :to="`/notice/${id}/apply`" class="card apply-link">
+        <span><b>신청서 초안 만들기</b><br /><span class="small">내 정보로 자동 입력하고 직접 확인 후 신청해요</span></span>
+        <span class="more">시작 ›</span>
+      </RouterLink>
 
       <section v-if="notice.attachments.length" class="card">
         <span class="small" style="font-weight: 600">첨부파일</span>
@@ -91,7 +100,7 @@ async function toggleSchedule() {
     </template>
   </main>
   <footer v-if="notice" class="foot">
-    <a :href="notice.url" target="_blank" rel="noopener" class="btn btn-line">원문 보기</a>
+    <a v-if="notice.url" :href="notice.url" target="_blank" rel="noopener" class="btn btn-line">원문 보기</a>
     <button class="btn btn-grow" :class="{ 'btn-line': notice.saved }" :disabled="busy || !notice.events.length" @click="toggleSchedule">
       <Icon name="calendar" :size="18" />
       {{ !notice.events.length ? '확정된 일정 없음' : notice.saved ? '내 일정에서 빼기' : '내 일정에 추가' }}

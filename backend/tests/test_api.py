@@ -47,7 +47,7 @@ def client(tmp_path):
 
 def make_user(client, username="seungbeom", **extra):
     body = {
-        "username": username, "password": "test-password",
+        "username": username, "password": "test-password", "agreed": True,
         "name": "승범", "department": "정보통신공학전공", "grade": 3, "interests": ["취업·진로"], **extra,
     }
     response = client.post("/api/auth/signup", json=body)
@@ -87,7 +87,7 @@ def test_users_cannot_read_each_other(client):
 def test_signup_validation(client):
     make_user(client)
     other = TestClient(main.app)
-    base = {"password": "test-password", "name": "a", "department": "경영학과", "grade": 1}
+    base = {"password": "test-password", "name": "a", "department": "경영학과", "grade": 1, "agreed": True}
     assert other.post("/api/auth/signup", json={**base, "username": "seungbeom"}).status_code == 409
     assert other.post("/api/auth/signup", json={**base, "username": "a b"}).status_code == 422
     assert other.post("/api/auth/signup", json={**base, "username": "newuser", "password": "short"}).status_code == 422
@@ -103,6 +103,77 @@ def test_old_department_names_are_renamed(tmp_path):
     conn = db.connect(path)
     assert conn.execute("SELECT department FROM users").fetchone()[0] == "정보통신공학전공"
     conn.close()
+
+
+def test_signup_requires_consent(client):
+    body = {"username": "newuser", "password": "test-password", "name": "a", "department": "경영학과", "grade": 1}
+    assert client.post("/api/auth/signup", json=body).status_code == 422
+    assert client.post("/api/auth/signup", json={**body, "agreed": True}).status_code == 201
+    consent = client.conn.execute("SELECT consented_at FROM users").fetchone()[0]
+    assert consent
+
+
+def test_login_locks_after_repeated_failures(client):
+    make_user(client)
+    other = TestClient(main.app)
+    bad = {"username": "seungbeom", "password": "wrong-password"}
+    good = {"username": "seungbeom", "password": "test-password"}
+    assert [other.post("/api/auth/login", json=bad).status_code for _ in range(5)] == [401] * 5
+    assert other.post("/api/auth/login", json=bad).status_code == 429
+    assert other.post("/api/auth/login", json=good).status_code == 429
+
+    client.conn.execute("UPDATE login_failures SET locked_until = '2000-01-01'")
+    client.conn.commit()
+    assert other.post("/api/auth/login", json=good).status_code == 200
+    assert client.conn.execute("SELECT count(*) FROM login_failures").fetchone()[0] == 0
+
+
+def test_password_change_ends_other_sessions(client):
+    make_user(client)
+    other = TestClient(main.app)
+    other.post("/api/auth/login", json={"username": "seungbeom", "password": "test-password"})
+
+    wrong = {"current_password": "bad-password", "new_password": "next-password"}
+    assert client.post("/api/auth/password", json=wrong).status_code == 403
+    body = {"current_password": "test-password", "new_password": "next-password"}
+    assert client.post("/api/auth/password", json=body).status_code == 204
+
+    assert client.get("/api/auth/me").status_code == 200
+    assert other.get("/api/auth/me").status_code == 401
+    old = other.post("/api/auth/login", json={"username": "seungbeom", "password": "test-password"})
+    assert old.status_code == 401
+    assert other.post("/api/auth/login", json={"username": "seungbeom", "password": "next-password"}).status_code == 200
+
+
+def test_delete_account_removes_all_user_data(client):
+    uid = make_user(client)
+    notice_id = seed(client.conn, "1", "공지", category="취업·진로", deadline="2026-11-13",
+                     events=[deadline_event("2026-11-13")])
+    client.post(f"/api/users/{uid}/notices/{notice_id}/schedule")
+    client.get(f"/api/users/{uid}/alerts")
+
+    assert client.post("/api/auth/delete-account", json={"password": "wrong-password"}).status_code == 403
+    assert client.post("/api/auth/delete-account", json={"password": "test-password"}).status_code == 204
+    assert client.get("/api/auth/me").status_code == 401
+    for table in ("users", "sessions", "subscriptions", "schedule_items", "alerts"):
+        assert client.conn.execute(f"SELECT count(*) FROM {table}").fetchone()[0] == 0
+    assert client.conn.execute("SELECT count(*) FROM notices").fetchone()[0] == 1
+
+
+def test_attachments_require_login(client, cache):
+    use_fetcher(FakeFetcher())
+    attachment = seed_attachment(client, "안내.pdf", "pdf")
+    for path in ("", "/file", "/text"):
+        assert client.get(f"/api/attachments/{attachment}{path}").status_code == 401
+
+
+def test_health_and_security_headers(client):
+    seed(client.conn, "1", "공지")
+    response = client.get("/api/health")
+    assert response.status_code == 200
+    assert response.json()["status"] == "ok" and response.json()["notices"] == 1
+    assert response.headers["x-content-type-options"] == "nosniff"
+    assert "frame-ancestors" in response.headers["content-security-policy"]
 
 
 def test_passwords_are_hashed():
@@ -237,6 +308,7 @@ def use_fetcher(fetcher):
 
 
 def test_attachment_inline_download_and_cache(client, cache):
+    make_user(client)
     fetcher = FakeFetcher()
     use_fetcher(fetcher)
     attachment = seed_attachment(client, "안내 문서.pdf", "pdf")
@@ -256,6 +328,7 @@ def test_attachment_inline_download_and_cache(client, cache):
 
 
 def test_personal_attachment_is_never_fetched(client, cache):
+    make_user(client)
     fetcher = FakeFetcher()
     use_fetcher(fetcher)
     attachment = seed_attachment(client, "합격자 명단.xlsx", "xlsx")
@@ -269,6 +342,7 @@ def test_personal_attachment_is_never_fetched(client, cache):
 
 
 def test_attachment_unknown_type_is_never_inline(client, cache):
+    make_user(client)
     use_fetcher(FakeFetcher(b"<script>"))
     attachment = seed_attachment(client, "압축.html", "html")
     response = client.get(f"/api/attachments/{attachment}/file")
@@ -279,6 +353,7 @@ def test_attachment_unknown_type_is_never_inline(client, cache):
 
 
 def test_attachment_text_and_failures(client, cache):
+    make_user(client)
     use_fetcher(FakeFetcher("신청 마감".encode()))
     text = seed_attachment(client, "메모.txt", "txt")
     assert client.get(f"/api/attachments/{text}/text").json() == {"text": "신청 마감"}
@@ -294,6 +369,6 @@ def test_attachment_text_and_failures(client, cache):
 
 
 def test_unknown_inputs(client):
-    body = {"username": "someone", "password": "test-password", "name": "a", "department": "없는과", "grade": 1}
+    body = {"username": "someone", "password": "test-password", "name": "a", "department": "없는과", "grade": 1, "agreed": True}
     assert client.post("/api/auth/signup", json=body).status_code == 422
     assert client.get("/api/users/none/feed").status_code == 401

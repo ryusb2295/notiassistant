@@ -2,7 +2,6 @@
 from __future__ import annotations
 
 import asyncio
-import hashlib
 import json
 import logging
 import sqlite3
@@ -13,11 +12,11 @@ from pathlib import Path
 from typing import Any
 from urllib.parse import quote
 
-from fastapi import APIRouter, Depends, FastAPI, HTTPException, Response
+from fastapi import APIRouter, Depends, FastAPI, HTTPException, Request, Response
 from fastapi.responses import FileResponse
 from fastapi.staticfiles import StaticFiles
 
-from . import analyzer, auth, config, crawler, db, parsers, pipeline, schedule
+from . import admin, analyzer, applications, auth, config, crawler, db, parsers, pipeline, schedule
 from .auth import ProfileIn
 from .db import get_conn
 from .matcher import GENERAL, MATCH, match_notice
@@ -26,6 +25,15 @@ log = logging.getLogger(__name__)
 URGENT_DAYS = 7
 NEW_DAYS = 7
 STALE_DAYS = 30  # 마감일이 없는 공지를 피드에 남기는 기간
+SECURITY_HEADERS = {
+    "X-Content-Type-Options": "nosniff",
+    "X-Frame-Options": "SAMEORIGIN",
+    "Referrer-Policy": "same-origin",
+    "Content-Security-Policy": (
+        "default-src 'self'; style-src 'self' 'unsafe-inline' https://fonts.googleapis.com; "
+        "font-src https://fonts.gstatic.com; img-src 'self' data:; frame-ancestors 'self'; base-uri 'self'"
+    ),
+}
 DIST_DIR = Path(__file__).resolve().parents[2] / "frontend" / "dist"
 
 
@@ -43,6 +51,7 @@ async def _crawl_loop() -> None:
 
 @asynccontextmanager
 async def lifespan(_: FastAPI):
+    logging.basicConfig(level=logging.INFO, format="%(asctime)s %(levelname)s %(name)s %(message)s")
     task = asyncio.create_task(_crawl_loop()) if config.CRAWL_INTERVAL_MIN > 0 else None
     yield
     if task:
@@ -104,7 +113,7 @@ def notice_card(row: sqlite3.Row, user: dict[str, Any], now: date) -> dict[str, 
 
 
 def build_feed(conn: sqlite3.Connection, user: dict[str, Any], now: date) -> dict[str, Any]:
-    subscribed = subscribed_ids(conn, user["id"])
+    subscribed = [*subscribed_ids(conn, user["id"]), admin.SOURCE_ID]
     marks = ",".join("?" for _ in subscribed)
     rows = conn.execute(
         f"SELECT n.id, n.title, n.source_id, n.posted_at, a.data, a.analyzer "
@@ -134,6 +143,19 @@ def build_feed(conn: sqlite3.Connection, user: dict[str, Any], now: date) -> dic
         "others": others,
         "hidden_count": sum(1 for c in active if c["match"] == "no"),
     }
+
+
+@app.middleware("http")
+async def security_headers(request: Request, call_next):
+    response = await call_next(request)
+    response.headers.update(SECURITY_HEADERS)
+    return response
+
+
+@app.get("/api/health")
+def health(conn: sqlite3.Connection = Depends(get_conn)):
+    notices = conn.execute("SELECT count(*), max(crawled_at) FROM notices").fetchone()
+    return {"status": "ok", "notices": notices[0], "last_crawl": notices[1], "analyzer": analyzer.provider()}
 
 
 @app.get("/api/meta")
@@ -173,7 +195,7 @@ def list_sources(user_id: str, conn: sqlite3.Connection = Depends(get_conn)):
     subscribed = set(subscribed_ids(conn, user_id))
     picks = recommended(user["department"])
     pick_ids = {s.id for s in picks}
-    ordered = picks + [s for s in config.SOURCES if s.id not in pick_ids and s.kind != "dept"]
+    ordered = picks + [s for s in config.SOURCES if s.id not in pick_ids and s.kind in ("base", "program")]
     return [
         {
             "id": s.id,
@@ -190,7 +212,7 @@ def list_sources(user_id: str, conn: sqlite3.Connection = Depends(get_conn)):
 @users.put("/subscriptions/{source_id}", status_code=204)
 def subscribe(user_id: str, source_id: str, conn: sqlite3.Connection = Depends(get_conn)):
     load_user(conn, user_id)
-    if source_id not in config.SOURCE_BY_ID:
+    if source_id not in config.SOURCE_BY_ID or config.SOURCE_BY_ID[source_id].kind == "direct":
         raise HTTPException(404, "게시판을 찾을 수 없습니다")
     with conn:
         conn.execute("INSERT OR IGNORE INTO subscriptions VALUES (?, ?)", (user_id, source_id))
@@ -350,7 +372,7 @@ def attachment_bytes(row: sqlite3.Row, fetcher: crawler.Fetcher) -> bytes:
     """학교 서버 부담을 줄이고 현장 네트워크에 대비해 받은 파일을 캐시한다."""
     if row["status"] == "personal":
         raise HTTPException(403, "개인정보가 있을 수 있어 학교 사이트에서만 볼 수 있습니다")
-    path = config.ATTACHMENT_CACHE / hashlib.sha256(row["url"].encode()).hexdigest()
+    path = config.attachment_path(row["url"])
     if path.exists():
         return path.read_bytes()
     try:
@@ -363,7 +385,7 @@ def attachment_bytes(row: sqlite3.Row, fetcher: crawler.Fetcher) -> bytes:
     return data
 
 
-@app.get("/api/attachments/{attachment_id}")
+@app.get("/api/attachments/{attachment_id}", dependencies=[Depends(auth.current_user_id)])
 def attachment_info(attachment_id: int, conn: sqlite3.Connection = Depends(get_conn)):
     row = load_attachment(conn, attachment_id)
     return {
@@ -377,7 +399,7 @@ def attachment_info(attachment_id: int, conn: sqlite3.Connection = Depends(get_c
     }
 
 
-@app.get("/api/attachments/{attachment_id}/file")
+@app.get("/api/attachments/{attachment_id}/file", dependencies=[Depends(auth.current_user_id)])
 def attachment_file(
     attachment_id: int,
     download: bool = False,
@@ -402,7 +424,7 @@ def attachment_file(
     )
 
 
-@app.get("/api/attachments/{attachment_id}/text")
+@app.get("/api/attachments/{attachment_id}/text", dependencies=[Depends(auth.current_user_id)])
 def attachment_text(
     attachment_id: int,
     conn: sqlite3.Connection = Depends(get_conn),
@@ -420,6 +442,8 @@ def attachment_text(
 
 
 app.include_router(users)
+app.include_router(applications.router)
+app.include_router(admin.router)
 
 if DIST_DIR.exists():
     app.mount("/assets", StaticFiles(directory=DIST_DIR / "assets"), name="assets")

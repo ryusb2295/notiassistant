@@ -17,7 +17,7 @@ export async function restoreSession() {
 
 async function request(path, options = {}) {
   const response = await fetch(`/api${path}`, {
-    headers: options.body ? { 'Content-Type': 'application/json' } : undefined,
+    headers: typeof options.body === 'string' ? { 'Content-Type': 'application/json' } : undefined,
     ...options,
   })
   if (!response.ok) {
@@ -49,6 +49,11 @@ export const api = {
     await request('/auth/logout', { method: 'POST' })
     userId = null
   },
+  changePassword: (body) => request('/auth/password', { method: 'POST', body: JSON.stringify(body) }),
+  deleteAccount: async (password) => {
+    await request('/auth/delete-account', { method: 'POST', body: JSON.stringify({ password }) })
+    userId = null
+  },
   user: () => request(user()),
   updateUser: (body) => request(user(), { method: 'PATCH', body: JSON.stringify(body) }),
   sources: () => request(user('/sources')),
@@ -62,6 +67,17 @@ export const api = {
   alerts: () => request(user('/alerts')),
   readAlerts: () => request(user('/alerts/read'), { method: 'POST' }),
   icsUrl: () => `/api${user('/calendar.ics')}`,
+  application: (id) => request(user(`/notices/${id}/application`)),
+  saveApplication: (id, body) => request(user(`/notices/${id}/application`), { method: 'PUT', body: JSON.stringify(body) }),
+  applicationFile: (id) => `/api${user(`/notices/${id}/application.txt`)}`,
+  me: () => request('/auth/me'),
+  adminNotices: () => request('/admin/notices'),
+  adminPublish: (body) => request('/admin/notices', { method: 'POST', body: JSON.stringify(body) }),
+  adminAnalyze: (file) => {
+    const form = new FormData()
+    form.append('file', file)
+    return request('/admin/analyze', { method: 'POST', body: form })
+  },
   attachment: (id) => request(`/attachments/${id}`),
   attachmentText: (id) => request(`/attachments/${id}/text`),
   attachmentFile: (id) => `/api/attachments/${id}/file`,

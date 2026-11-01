@@ -141,7 +141,7 @@ def run(conn: sqlite3.Connection, limit: int = 15, source_ids: list[str] | None 
     fetcher = crawler.Fetcher()
     result = {}
     for source in config.SOURCES:
-        if source_ids and source.id not in source_ids:
+        if source.kind == "direct" or (source_ids and source.id not in source_ids):
             continue
         try:
             result[source.id] = crawl_source(conn, fetcher, source, limit, llm)
