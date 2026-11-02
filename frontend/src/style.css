@@ -323,6 +323,16 @@ dl { margin: 0; }
 
 .tag-closed { background: #f0f1f4; color: var(--ink-3); }
 
+.rail-wrap { position: relative; margin: 0 -20px; }
+.rail-wrap::after { content: ''; position: absolute; top: 0; right: 0; bottom: 0; width: 28px; background: linear-gradient(90deg, rgba(255, 255, 255, 0), var(--surface)); pointer-events: none; }
+.rail {
+  display: flex; gap: 8px; padding: 2px 20px; overflow-x: auto; scroll-snap-type: x proximity;
+  scrollbar-width: none; -webkit-overflow-scrolling: touch; cursor: grab; user-select: none;
+}
+.rail::-webkit-scrollbar { display: none; }
+.rail > * { flex: none; white-space: nowrap; scroll-snap-align: start; min-height: 36px; display: inline-flex; align-items: center; }
+.rail > :last-child { margin-right: 20px; }
+
 .auth-switch { display: flex; align-items: center; justify-content: center; gap: 2px; color: var(--ink-3); font-size: 13px; }
 
 .picker { position: relative; }

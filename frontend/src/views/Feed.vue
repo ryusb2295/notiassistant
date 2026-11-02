@@ -1,6 +1,7 @@
 <script setup>
 import { computed, onBeforeUnmount, onMounted, ref } from 'vue'
 import { api } from '../api'
+import BoardChips from '../components/BoardChips.vue'
 import Icon from '../components/Icon.vue'
 import PagedList from '../components/PagedList.vue'
 import SkeletonCards from '../components/SkeletonCards.vue'
@@ -38,10 +39,10 @@ async function load() {
   }
 }
 
-// 칩을 누르면 그 게시판 공지만, 다시 누르면 전체를 보여준다.
-function toggleFilter(id) {
-  filter.value = filter.value === id ? null : id
-  showOthers.value = Boolean(filter.value)
+// 칩을 고르면 그 게시판 공지만, 전체를 고르면 모든 구독 게시판을 보여준다.
+function setFilter(id) {
+  filter.value = id
+  showOthers.value = Boolean(id)
   load()
 }
 
@@ -110,10 +111,7 @@ onBeforeUnmount(() => {
       <input :value="query" type="search" placeholder="공지 검색 (예: 해커톤, 장학)" aria-label="공지 검색" @input="onSearch" />
       <button v-if="searching" type="button" class="search-clear" aria-label="검색어 지우기" @click="clearSearch">×</button>
     </label>
-    <div class="chips">
-      <button v-for="source in subscribed" :key="source.id" class="chip chip-filter" :aria-pressed="filter === source.id" @click="toggleFilter(source.id)">{{ source.name }}</button>
-      <RouterLink to="/boards" class="chip chip-add">+ 게시판 추가</RouterLink>
-    </div>
+    <BoardChips :sources="subscribed" :model-value="filter" @update:model-value="setFilter" />
     <p v-if="feed" class="updated small">
       <Icon name="refresh" :size="12" />공지 업데이트 {{ ago(feed.last_crawl) }}
     </p>
@@ -122,7 +120,7 @@ onBeforeUnmount(() => {
     <p v-if="error" class="error" role="alert">{{ error }}</p>
     <div v-if="filter" class="filter-bar">
       <span><b>{{ filterName }}</b> 공지만 보는 중</span>
-      <button class="link-btn" @click="toggleFilter(filter)">전체 보기</button>
+      <button class="link-btn" @click="setFilter(null)">전체 보기</button>
     </div>
     <p v-if="searching && feed" class="section-label" role="status">"{{ query.trim() }}" 전체 게시판 검색 결과 {{ resultCount }}건</p>
     <SkeletonCards v-if="!feed" :count="4" />
