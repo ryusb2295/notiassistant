@@ -12,7 +12,18 @@ export function dateTime(value) {
   return `${date.getFullYear()}-${pad(date.getMonth() + 1)}-${pad(date.getDate())} ${pad(date.getHours())}:${pad(date.getMinutes())}`
 }
 
+// 서버 UTC 시각을 "10분 전"처럼 보여준다.
+export function ago(value) {
+  if (!value) return '기록 없음'
+  const minutes = Math.floor((Date.now() - new Date(`${value.replace(' ', 'T')}Z`).getTime()) / 60000)
+  if (minutes < 1) return '방금'
+  if (minutes < 60) return `${minutes}분 전`
+  if (minutes < 60 * 24) return `${Math.floor(minutes / 60)}시간 전`
+  return `${Math.floor(minutes / 60 / 24)}일 전`
+}
+
 export function dDayLabel(days) {
+  if (days < 0) return '마감'
   return days === 0 ? 'D-Day' : `D-${days}`
 }
 

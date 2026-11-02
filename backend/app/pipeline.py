@@ -110,7 +110,8 @@ def crawl_source(
     limit: int,
     llm: LLM,
 ) -> int:
-    items = crawler.parse_list(fetcher.get_text(source.url), source.url)
+    # 학교 게시판은 기본 10건씩 보여줘서, 하루에 공지가 많은 게시판은 수집 사이에 첫 페이지 밖으로 밀린다.
+    items = crawler.parse_list(fetcher.get_text(f"{source.url}?articleLimit={limit}"), source.url)
     # LLM을 쓸 수 있으면 규칙 분석으로 남은 공지도 다시 처리한다. 호출 한도에 걸린 공지가 여기서 복구된다.
     done_filter = " AND a.analyzer != 'rules'" if llm else ""
     known = {
@@ -134,7 +135,7 @@ def crawl_source(
     return added
 
 
-def run(conn: sqlite3.Connection, limit: int = 15, source_ids: list[str] | None = None) -> dict[str, int]:
+def run(conn: sqlite3.Connection, limit: int = 30, source_ids: list[str] | None = None) -> dict[str, int]:
     llm = analyzer.make_llm()
     if llm is None:
         log.warning("LLM 키가 없어 규칙 분석만 실행합니다.")
@@ -157,7 +158,7 @@ def run(conn: sqlite3.Connection, limit: int = 15, source_ids: list[str] | None 
 
 def main() -> None:
     parser = argparse.ArgumentParser(description="공지 수집과 분석")
-    parser.add_argument("--limit", type=int, default=15, help="게시판별 최대 공지 수")
+    parser.add_argument("--limit", type=int, default=30, help="게시판별 최대 공지 수")
     parser.add_argument("--source", action="append", help="특정 게시판 id만 수집")
     args = parser.parse_args()
     logging.basicConfig(level=logging.INFO, format="%(message)s")

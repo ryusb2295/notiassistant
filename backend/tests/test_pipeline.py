@@ -108,3 +108,21 @@ def test_list_items_are_limited(tmp_path):
     conn = db.connect(tmp_path / "t.sqlite3")
     assert pipeline.crawl_source(conn, FakeFetcher(), SOURCE, 1, None) == 1
     assert isinstance(crawler.parse_list((FIXTURES / "list.html").read_text(encoding="utf-8"), SOURCE.url)[0], crawler.ListItem)
+
+
+def test_list_page_asks_for_enough_rows(tmp_path):
+    conn = db.connect(tmp_path / "t.sqlite3")
+
+    class Recorder(FakeFetcher):
+        def __init__(self):
+            super().__init__()
+            self.lists = []
+
+        def get_text(self, url):
+            if "mode=view" not in url:
+                self.lists.append(url)
+            return super().get_text(url)
+
+    fetcher = Recorder()
+    pipeline.crawl_source(conn, fetcher, SOURCE, 30, None)
+    assert fetcher.lists == [f"{SOURCE.url}?articleLimit=30"]

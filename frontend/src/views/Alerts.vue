@@ -3,6 +3,7 @@ import { computed, onBeforeUnmount, onMounted, ref } from 'vue'
 import { useRouter } from 'vue-router'
 import { api } from '../api'
 import Icon from '../components/Icon.vue'
+import SkeletonCards from '../components/SkeletonCards.vue'
 import { dateTime } from '../format'
 
 const router = useRouter()
@@ -98,6 +99,7 @@ function goToNotice() {
         <span class="small">{{ dateTime(alert.created_at) }}</span>
       </button>
     </div>
+    <SkeletonCards v-if="!loaded" :count="4" />
     <p v-if="loaded && !alerts.length" class="empty">아직 알림이 없어요</p>
   </main>
 

@@ -59,7 +59,15 @@ export const api = {
   sources: () => request(user('/sources')),
   subscribe: (id) => request(user(`/subscriptions/${id}`), { method: 'PUT' }),
   unsubscribe: (id) => request(user(`/subscriptions/${id}`), { method: 'DELETE' }),
-  feed: (source) => request(user(source ? `/feed?source=${encodeURIComponent(source)}` : '/feed')),
+  feed: (source, q) => {
+    const params = new URLSearchParams()
+    if (source) params.set('source', source)
+    if (q) params.set('q', q)
+    const query = params.toString()
+    return request(user(query ? `/feed?${query}` : '/feed'))
+  },
+  feedback: (id, kind, note = '') => request(user(`/notices/${id}/feedback`), { method: 'POST', body: JSON.stringify({ kind, note }) }),
+  adminFeedback: () => request('/admin/feedback'),
   avatarUrl: (version = '') => `/api${user('/avatar')}?v=${version}`,
   uploadAvatar: (file) => {
     const form = new FormData()

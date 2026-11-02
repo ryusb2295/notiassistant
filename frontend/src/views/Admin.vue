@@ -12,6 +12,7 @@ const CATEGORIES = ['장학', '취업·진로', '교육·특강', '경진대회'
 const router = useRouter()
 const departments = ref([])
 const published = ref([])
+const feedback = ref([])
 const upload = ref(null)
 const form = ref(null)
 const picked = ref('')
@@ -32,6 +33,7 @@ onMounted(async () => {
     const [meta, list] = await Promise.all([api.meta(), api.adminNotices()])
     departments.value = meta.departments
     published.value = list
+    feedback.value = await api.adminFeedback()
   } catch (failure) {
     error.value = failure.message
   }
@@ -165,6 +167,14 @@ async function publish() {
       <button class="btn" :disabled="busy || !form.title.trim()">게시하고 대상 학생에게 알리기</button>
     </form>
 
+    <template v-if="feedback.length">
+      <span class="section-label">학생 판정 오류 신고 {{ feedback.length }}건</span>
+      <RouterLink v-for="item in feedback.slice(0, 10)" :key="item.id" :to="`/notice/${item.notice_id}`" class="card">
+        <span class="tag tag-due" style="align-self: flex-start">{{ item.label }}</span>
+        <span class="card-title">{{ item.title }}</span>
+        <span class="small">{{ item.department || '탈퇴한 학생' }}<template v-if="item.note"> · {{ item.note }}</template></span>
+      </RouterLink>
+    </template>
     <template v-if="published.length">
       <span class="section-label">게시한 공지</span>
       <RouterLink v-for="item in published" :key="item.id" :to="`/notice/${item.id}`" class="card">

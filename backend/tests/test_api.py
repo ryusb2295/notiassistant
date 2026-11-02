@@ -483,3 +483,70 @@ def test_account_deletion_removes_avatar(client, tmp_path, monkeypatch):
     client.put(f"/api/users/{uid}/avatar", files={"file": ("me.png", PNG)})
     client.post("/api/auth/delete-account", json={"password": "test-password"})
     assert not (tmp_path / "avatars" / uid).exists()
+
+
+def test_search_finds_title_and_summary_ignoring_spaces(client):
+    uid = make_user(client, interests=[])
+    seed(client.conn, "1", "2026 해커톤 참가자 모집", category="경진대회")
+    seed(client.conn, "2", "장학금 안내", summary=["SW 마일리지 장학금 신청 안내"], category="장학")
+    seed(client.conn, "3", "기숙사 안내")
+
+    def titles(q):
+        data = client.get(f"/api/users/{uid}/feed", params={"q": q}).json()
+        return sorted(c["title"] for c in [*data["urgent"], *data["mine"], *data["others"]])
+
+    assert titles("해커 톤") == ["2026 해커톤 참가자 모집"]
+    assert titles("마일리지") == ["장학금 안내"]
+    assert titles("장학 신청") == ["장학금 안내"]
+    assert titles("없는단어") == []
+    assert len(titles("")) == 3
+
+
+def test_hidden_notices_and_last_crawl_are_returned(client):
+    uid = make_user(client)
+    hidden = seed(client.conn, "1", "간호학과 전용", departments=["간호학과"])
+    data = client.get(f"/api/users/{uid}/feed").json()
+    assert [c["id"] for c in data["hidden"]] == [hidden] and data["hidden_count"] == 1
+    assert data["last_crawl"]
+
+
+def test_feedback_is_stored_and_visible_to_office(client, monkeypatch):
+    monkeypatch.setattr(config, "ADMIN_USERNAMES", {"office-staff"})
+    uid = make_user(client)
+    notice_id = seed(client.conn, "1", "간호학과 전용", departments=["간호학과"])
+    url = f"/api/users/{uid}/notices/{notice_id}/feedback"
+    assert client.post(url, json={"kind": "wrong_hide", "note": "저도 대상이에요"}).status_code == 204
+    assert client.post(url, json={"kind": "nonsense"}).status_code == 422
+    assert client.post(f"/api/users/{uid}/notices/99999/feedback", json={"kind": "wrong_info"}).status_code == 404
+    assert client.get("/api/admin/feedback").status_code == 403
+
+    office = TestClient(main.app)
+    make_user(office, "office-staff")
+    listed = office.get("/api/admin/feedback").json()
+    assert listed[0]["label"] == "해당되는데 숨겨졌어요" and listed[0]["note"] == "저도 대상이에요"
+    assert listed[0]["department"] == "정보통신공학전공"
+
+
+def test_search_covers_unsubscribed_boards_but_feed_does_not(client):
+    uid = make_user(client, interests=[])
+    seed(client.conn, "1", "2026 해커톤 참가자 모집", source="swedu", category="경진대회")
+    feed = client.get(f"/api/users/{uid}/feed").json()
+    assert all("해커톤" not in c["title"] for c in [*feed["mine"], *feed["others"]])
+    found = client.get(f"/api/users/{uid}/feed", params={"q": "해커톤"}).json()
+    assert [c["source"] for c in [*found["mine"], *found["others"]]] == ["SW중심대학사업단"]
+
+
+def test_summary_counts_new_matches_before_inbox_is_opened(client):
+    uid = make_user(client)
+    seed(client.conn, "1", "취업 공지", category="취업·진로")
+    assert client.get(f"/api/users/{uid}/summary").json()["unread_alerts"] == 1
+
+
+def test_search_includes_expired_notices(client):
+    uid = make_user(client, interests=["경진대회"])
+    seed(client.conn, "1", "지난 해커톤", category="경진대회", deadline="2026-10-20")
+    assert client.get(f"/api/users/{uid}/feed").json()["match_count"] == 0
+    found = client.get(f"/api/users/{uid}/feed", params={"q": "해커톤"}).json()
+    cards = [*found["urgent"], *found["mine"]]
+    assert [c["title"] for c in cards] == ["지난 해커톤"] and cards[0]["d_day"] < 0
+    assert found["urgent"] == []

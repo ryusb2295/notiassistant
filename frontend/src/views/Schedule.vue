@@ -2,6 +2,7 @@
 import { computed, onMounted, ref } from 'vue'
 import { api } from '../api'
 import Icon from '../components/Icon.vue'
+import SkeletonCards from '../components/SkeletonCards.vue'
 import { dayOfMonth, dDayLabel, weekday } from '../format'
 
 const WEEK = ['일', '월', '화', '수', '목', '금', '토']
@@ -9,11 +10,13 @@ const now = new Date()
 const year = ref(now.getFullYear())
 const month = ref(now.getMonth())
 const items = ref([])
+const loaded = ref(false)
 const error = ref('')
 
 onMounted(async () => {
   try {
     items.value = await api.schedule()
+    loaded.value = true
   } catch (failure) {
     error.value = failure.message
   }
@@ -128,6 +131,7 @@ function move(step) {
       <span class="section-label">{{ heading }}</span>
       <button v-if="selected" class="link-btn" @click="selected = null">전체 보기</button>
     </div>
+    <SkeletonCards v-if="!loaded && !error" :count="2" />
     <RouterLink v-for="item in listed" :key="item.id" :to="`/notice/${item.notice_id}`" class="card item">
       <div class="item-date"><span class="small">{{ weekday(item.date) }}</span><b>{{ dayOfMonth(item.date) }}</b></div>
       <div class="item-body">

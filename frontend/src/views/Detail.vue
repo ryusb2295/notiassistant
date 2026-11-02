@@ -4,6 +4,7 @@ import { useRouter } from 'vue-router'
 import { api } from '../api'
 import CardNews from '../components/CardNews.vue'
 import Icon from '../components/Icon.vue'
+import SkeletonCards from '../components/SkeletonCards.vue'
 import { dDayLabel, longDate, shortDate } from '../format'
 
 const props = defineProps({ id: { type: String, required: true } })
@@ -11,6 +12,25 @@ const router = useRouter()
 const notice = ref(null)
 const error = ref('')
 const busy = ref(false)
+const reporting = ref(false)
+const reported = ref('')
+
+const REPORTS = [
+  ['wrong_match', '해당 안 되는데 떴어요'],
+  ['wrong_hide', '해당되는데 숨겨졌어요'],
+  ['wrong_info', '요약이나 마감이 틀렸어요'],
+]
+
+async function report(kind) {
+  try {
+    await api.feedback(props.id, kind)
+    reported.value = '알려주셔서 고마워요. 판정을 고치는 데 쓸게요'
+  } catch (failure) {
+    reported.value = failure.message
+  } finally {
+    reporting.value = false
+  }
+}
 
 const STATUS = { read: '읽음', unsupported: '지원하지 않는 형식', failed: '읽기 실패', needs_ai: 'AI 연결 시 읽기 가능', personal: '개인정보 보호로 분석 제외' }
 const isAi = computed(() => notice.value && notice.value.analyzer !== 'rules')
@@ -49,6 +69,7 @@ async function toggleSchedule() {
   </header>
   <main class="main">
     <p v-if="error" class="error" role="alert">{{ error }}</p>
+    <SkeletonCards v-if="!notice && !error" :count="3" />
     <template v-if="notice">
       <CardNews v-if="isOffice" :title="notice.title" :deadline="notice.deadline" :audience="notice.audience"
         :benefit="notice.benefit || ''" :how="notice.how_to_apply || ''" />
@@ -74,6 +95,16 @@ async function toggleSchedule() {
         <div v-if="notice.how_to_apply" class="row"><dt>신청 방법</dt><dd>{{ notice.how_to_apply }}</dd></div>
         <div class="row"><dt>판정</dt><dd :class="{ ok: notice.match === 'match' }">{{ notice.reason }}</dd></div>
       </dl>
+
+      <section class="report">
+        <button v-if="!reporting && !reported" type="button" class="link-btn" @click="reporting = true"><Icon name="flag" :size="15" />판정이 틀렸어요</button>
+        <div v-if="reporting" class="report-options">
+          <span class="small">어떤 점이 틀렸나요?</span>
+          <button v-for="[kind, label] in REPORTS" :key="kind" type="button" class="toggle-chip" @click="report(kind)">{{ label }}</button>
+          <button type="button" class="link-btn" @click="reporting = false">취소</button>
+        </div>
+        <p v-if="reported" class="small" role="status">{{ reported }}</p>
+      </section>
 
       <RouterLink :to="`/notice/${id}/apply`" class="card apply-link">
         <span><b>신청서 초안 만들기</b><br /><span class="small">내 정보로 자동 입력하고 직접 확인 후 신청해요</span></span>

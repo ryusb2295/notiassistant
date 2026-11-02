@@ -10,13 +10,13 @@ from contextlib import asynccontextmanager
 from datetime import date, timedelta
 from functools import lru_cache
 from pathlib import Path
-from typing import Any, Optional
+from typing import Any, Literal, Optional
 from urllib.parse import quote
 
 from fastapi import APIRouter, Depends, FastAPI, File, HTTPException, Request, Response, UploadFile
 from fastapi.responses import FileResponse
 from fastapi.staticfiles import StaticFiles
-from pydantic import BaseModel
+from pydantic import BaseModel, Field
 
 from . import admin, analyzer, applications, auth, config, crawler, db, parsers, pipeline, schedule
 from .auth import ProfileIn
@@ -144,12 +144,24 @@ def merge_duplicates(cards: list[dict[str, Any]]) -> list[dict[str, Any]]:
     return sorted(merged, key=lambda c: (c["posted_at"], c["id"]), reverse=True)
 
 
+def matches_query(row: sqlite3.Row, query: str) -> bool:
+    """제목, AI 요약, 대상에서 검색어를 찾는다. 띄어쓰기 차이는 무시한다."""
+    analysis = json.loads(row["data"])
+    text = " ".join([row["title"], *analysis.get("summary", []), analysis.get("audience") or ""])
+    squash = lambda value: re.sub(r"\s+", "", value).lower()
+    return all(squash(word) in squash(text) for word in query.split())
+
+
 def build_feed(
-    conn: sqlite3.Connection, user: dict[str, Any], now: date, source: str | None = None
+    conn: sqlite3.Connection, user: dict[str, Any], now: date,
+    source: str | None = None, query: str | None = None,
 ) -> dict[str, Any]:
     subscribed = [*subscribed_ids(conn, user["id"]), admin.SOURCE_ID]
     if source:
         subscribed = [source] if source in subscribed else []
+    elif query and query.strip():
+        # 검색은 구독하지 않은 게시판까지 찾는다. 찾는 공지가 어느 게시판에 있는지 학생은 모른다.
+        subscribed = [s.id for s in config.SOURCES]
     marks = ",".join("?" for _ in subscribed)
     rows = conn.execute(
         f"SELECT n.id, n.title, n.source_id, n.posted_at, a.data, a.analyzer "
@@ -157,14 +169,17 @@ def build_feed(
         f"WHERE n.source_id IN ({marks}) ORDER BY n.posted_at DESC, n.id DESC",
         subscribed,
     ).fetchall()
+    if query and query.strip():
+        rows = [row for row in rows if matches_query(row, query.strip())]
     cards = merge_duplicates([notice_card(row, user, now) for row in rows])
     stale = (now - timedelta(days=STALE_DAYS)).isoformat()
-    active = [
+    # 검색할 때는 지난 공지도 찾아야 하므로 마감·오래된 공지를 거르지 않는다.
+    active = cards if query and query.strip() else [
         c for c in cards
         if (c["d_day"] is None and c["posted_at"] >= stale) or (c["d_day"] is not None and c["d_day"] >= 0)
     ]
     urgent = sorted(
-        (c for c in active if c["match"] == MATCH and c["d_day"] is not None and c["d_day"] <= URGENT_DAYS),
+        (c for c in active if c["match"] == MATCH and c["d_day"] is not None and 0 <= c["d_day"] <= URGENT_DAYS),
         key=lambda c: c["d_day"],
     )
     urgent_ids = {c["id"] for c in urgent}
@@ -178,6 +193,9 @@ def build_feed(
         "mine": mine,
         "others": others,
         "hidden_count": sum(1 for c in active if c["match"] == "no"),
+        # 판정이 틀렸을 때 학생이 확인할 수 있도록 숨긴 공지도 함께 보낸다.
+        "hidden": [c for c in active if c["match"] == "no"],
+        "last_crawl": conn.execute("SELECT max(crawled_at) FROM notices").fetchone()[0],
     }
 
 
@@ -229,6 +247,9 @@ def update_user(user_id: str, body: ProfileIn, conn: sqlite3.Connection = Depend
 
 @users.get("/summary")
 def summary(user_id: str, conn: sqlite3.Connection = Depends(get_conn), now: date = Depends(today)):
+    # 하단 탭의 알림 숫자가 알림함을 열기 전에도 맞도록 여기서도 알림을 만든다.
+    schedule.generate_deadline_alerts(conn, user_id, now)
+    schedule.generate_notice_alerts(conn, user_id, build_feed(conn, load_user(conn, user_id), now))
     count = lambda sql, *args: conn.execute(sql, (user_id, *args)).fetchone()[0]
     return {
         "subscriptions": count("SELECT count(*) FROM subscriptions WHERE user_id = ?"),
@@ -289,11 +310,27 @@ def unsubscribe(user_id: str, source_id: str, conn: sqlite3.Connection = Depends
 
 @users.get("/feed")
 def feed(
-    user_id: str, source: Optional[str] = None,
+    user_id: str, source: Optional[str] = None, q: Optional[str] = None,
     conn: sqlite3.Connection = Depends(get_conn), now: date = Depends(today),
 ):
     user = load_user(conn, user_id)
-    return build_feed(conn, user, now, source)
+    return build_feed(conn, user, now, source, q)
+
+
+class FeedbackIn(BaseModel):
+    kind: Literal["wrong_match", "wrong_hide", "wrong_info"]
+    note: str = Field(default="", max_length=500)
+
+
+@users.post("/notices/{notice_id}/feedback", status_code=204)
+def send_feedback(user_id: str, notice_id: int, body: FeedbackIn, conn: sqlite3.Connection = Depends(get_conn)):
+    if conn.execute("SELECT 1 FROM notices WHERE id = ?", (notice_id,)).fetchone() is None:
+        raise HTTPException(404, "공지를 찾을 수 없습니다")
+    with conn:
+        conn.execute(
+            "INSERT INTO feedback (user_id, notice_id, kind, note) VALUES (?, ?, ?, ?)",
+            (user_id, notice_id, body.kind, body.note.strip()),
+        )
 
 
 AVATAR_TYPES = {b"\xff\xd8\xff": "image/jpeg", b"\x89PNG\r\n\x1a\n": "image/png"}

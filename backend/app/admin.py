@@ -132,3 +132,17 @@ def list_notices(conn: sqlite3.Connection = Depends(db.get_conn)):
         (SOURCE_ID,),
     ).fetchall()
     return [dict(row) for row in rows]
+
+
+FEEDBACK_LABELS = {"wrong_match": "해당 안 되는데 떴어요", "wrong_hide": "해당되는데 숨겨졌어요", "wrong_info": "요약이 틀렸어요"}
+
+
+@router.get("/feedback")
+def list_feedback(conn: sqlite3.Connection = Depends(db.get_conn)):
+    """학생이 신고한 판정 오류. 분석 프롬프트와 판정 규칙을 고칠 때 본다."""
+    rows = conn.execute(
+        "SELECT f.id, f.kind, f.note, f.created_at, n.id AS notice_id, n.title, u.department "
+        "FROM feedback f JOIN notices n ON n.id = f.notice_id LEFT JOIN users u ON u.id = f.user_id "
+        "ORDER BY f.id DESC LIMIT 100"
+    ).fetchall()
+    return [{**dict(row), "label": FEEDBACK_LABELS.get(row["kind"], row["kind"])} for row in rows]
