@@ -28,9 +28,10 @@ onMounted(async () => {
   }
 })
 
+// 페이지가 아니라 대화 영역만 스크롤해서 머리글과 입력창은 제자리에 둔다.
 async function scrollDown() {
   await nextTick()
-  window.scrollTo({ top: document.body.scrollHeight, behavior: 'smooth' })
+  list.value?.scrollTo({ top: list.value.scrollHeight, behavior: 'smooth' })
 }
 
 async function send(text = input.value) {
@@ -57,6 +58,7 @@ async function send(text = input.value) {
 </script>
 
 <template>
+  <div class="ask-page">
   <header class="head back-head ask-head">
     <button class="icon-btn" aria-label="뒤로" @click="router.back()"><Icon name="back" :size="22" /></button>
     <div class="inner">
@@ -65,7 +67,7 @@ async function send(text = input.value) {
     </div>
   </header>
 
-  <main class="chat">
+  <main ref="list" class="chat">
     <section v-if="notice" class="chat-context">
       <span class="small">{{ notice.source }}</span>
       <span :class="notice.match === 'match' ? 'reason' : 'small'">
@@ -101,4 +103,5 @@ async function send(text = input.value) {
     <input v-model="input" class="input" maxlength="300" placeholder="공지에 대해 물어보세요" aria-label="질문 입력" :disabled="busy" />
     <button class="btn btn-small" :disabled="busy || !input.trim()" aria-label="보내기"><Icon name="send" :size="18" /></button>
   </form>
+  </div>
 </template>
