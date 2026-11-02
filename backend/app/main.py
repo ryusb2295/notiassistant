@@ -4,6 +4,7 @@ from __future__ import annotations
 import asyncio
 import json
 import logging
+import re
 import sqlite3
 from contextlib import asynccontextmanager
 from datetime import date, timedelta
@@ -12,7 +13,7 @@ from pathlib import Path
 from typing import Any, Optional
 from urllib.parse import quote
 
-from fastapi import APIRouter, Depends, FastAPI, HTTPException, Request, Response
+from fastapi import APIRouter, Depends, FastAPI, File, HTTPException, Request, Response, UploadFile
 from fastapi.responses import FileResponse
 from fastapi.staticfiles import StaticFiles
 from pydantic import BaseModel
@@ -39,7 +40,7 @@ SECURITY_HEADERS = {
     "Referrer-Policy": "same-origin",
     "Content-Security-Policy": (
         "default-src 'self'; style-src 'self' 'unsafe-inline' https://fonts.googleapis.com; "
-        "font-src https://fonts.gstatic.com; img-src 'self' data:; frame-ancestors 'self'; base-uri 'self'"
+        "font-src https://fonts.gstatic.com; img-src 'self' data: blob:; frame-ancestors 'self'; base-uri 'self'"
     ),
 }
 DIST_DIR = Path(__file__).resolve().parents[2] / "frontend" / "dist"
@@ -125,8 +126,30 @@ def notice_card(row: sqlite3.Row, user: dict[str, Any], now: date) -> dict[str, 
     }
 
 
-def build_feed(conn: sqlite3.Connection, user: dict[str, Any], now: date) -> dict[str, Any]:
+TITLE_NOISE = re.compile(r"\[[^\]]*\]|\([^)]*\)|[^0-9A-Za-z가-힣]")
+MATCH_RANK = {MATCH: 0, GENERAL: 1, "no": 2}
+
+
+def merge_duplicates(cards: list[dict[str, Any]]) -> list[dict[str, Any]]:
+    """여러 게시판에 같은 제목으로 올라온 공지를 하나로 합친다. 가장 잘 맞는 카드를 남긴다."""
+    groups: dict[str, list[dict[str, Any]]] = {}
+    for card in cards:
+        key = TITLE_NOISE.sub("", card["title"]).lower() or str(card["id"])
+        groups.setdefault(key, []).append(card)
+    merged = []
+    for group in groups.values():
+        best = min(group, key=lambda c: MATCH_RANK.get(c["match"], 3))
+        best["also"] = sorted({c["source"] for c in group} - {best["source"]})
+        merged.append(best)
+    return sorted(merged, key=lambda c: (c["posted_at"], c["id"]), reverse=True)
+
+
+def build_feed(
+    conn: sqlite3.Connection, user: dict[str, Any], now: date, source: str | None = None
+) -> dict[str, Any]:
     subscribed = [*subscribed_ids(conn, user["id"]), admin.SOURCE_ID]
+    if source:
+        subscribed = [source] if source in subscribed else []
     marks = ",".join("?" for _ in subscribed)
     rows = conn.execute(
         f"SELECT n.id, n.title, n.source_id, n.posted_at, a.data, a.analyzer "
@@ -134,7 +157,7 @@ def build_feed(conn: sqlite3.Connection, user: dict[str, Any], now: date) -> dic
         f"WHERE n.source_id IN ({marks}) ORDER BY n.posted_at DESC, n.id DESC",
         subscribed,
     ).fetchall()
-    cards = [notice_card(row, user, now) for row in rows]
+    cards = merge_duplicates([notice_card(row, user, now) for row in rows])
     stale = (now - timedelta(days=STALE_DAYS)).isoformat()
     active = [
         c for c in cards
@@ -265,9 +288,53 @@ def unsubscribe(user_id: str, source_id: str, conn: sqlite3.Connection = Depends
 
 
 @users.get("/feed")
-def feed(user_id: str, conn: sqlite3.Connection = Depends(get_conn), now: date = Depends(today)):
+def feed(
+    user_id: str, source: Optional[str] = None,
+    conn: sqlite3.Connection = Depends(get_conn), now: date = Depends(today),
+):
     user = load_user(conn, user_id)
-    return build_feed(conn, user, now)
+    return build_feed(conn, user, now, source)
+
+
+AVATAR_TYPES = {b"\xff\xd8\xff": "image/jpeg", b"\x89PNG\r\n\x1a\n": "image/png"}
+MAX_AVATAR_BYTES = 3 * 1024 * 1024
+
+
+def avatar_type(data: bytes) -> str | None:
+    """확장자 대신 파일 앞부분을 보고 실제 이미지인지 확인한다."""
+    if data[:4] == b"RIFF" and data[8:12] == b"WEBP":
+        return "image/webp"
+    return next((kind for magic, kind in AVATAR_TYPES.items() if data.startswith(magic)), None)
+
+
+@users.put("/avatar", status_code=204)
+def upload_avatar(user_id: str, file: UploadFile = File(...), conn: sqlite3.Connection = Depends(get_conn)):
+    data = file.file.read(MAX_AVATAR_BYTES + 1)
+    if len(data) > MAX_AVATAR_BYTES:
+        raise HTTPException(413, "3MB 이하 사진만 올릴 수 있습니다")
+    kind = avatar_type(data)
+    if kind is None:
+        raise HTTPException(415, "JPG, PNG, WEBP 사진만 올릴 수 있습니다")
+    config.AVATAR_DIR.mkdir(parents=True, exist_ok=True)
+    (config.AVATAR_DIR / user_id).write_bytes(data)
+    with conn:
+        conn.execute("UPDATE users SET avatar_type = ? WHERE id = ?", (kind, user_id))
+
+
+@users.get("/avatar")
+def get_avatar(user_id: str, conn: sqlite3.Connection = Depends(get_conn)):
+    row = conn.execute("SELECT avatar_type FROM users WHERE id = ?", (user_id,)).fetchone()
+    path = config.AVATAR_DIR / user_id
+    if row is None or not row["avatar_type"] or not path.exists():
+        raise HTTPException(404, "프로필 사진이 없습니다")
+    return FileResponse(path, media_type=row["avatar_type"], headers={"Cache-Control": "no-cache"})
+
+
+@users.delete("/avatar", status_code=204)
+def delete_avatar(user_id: str, conn: sqlite3.Connection = Depends(get_conn)):
+    (config.AVATAR_DIR / user_id).unlink(missing_ok=True)
+    with conn:
+        conn.execute("UPDATE users SET avatar_type = NULL WHERE id = ?", (user_id,))
 
 
 @users.get("/notices/{notice_id}")

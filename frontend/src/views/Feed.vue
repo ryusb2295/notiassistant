@@ -2,17 +2,30 @@
 import { computed, onMounted, ref } from 'vue'
 import { api } from '../api'
 import Icon from '../components/Icon.vue'
-import NoticeCard from '../components/NoticeCard.vue'
+import PagedList from '../components/PagedList.vue'
 
 const user = ref(null)
 const feed = ref(null)
 const sources = ref([])
 const alerts = ref([])
 const showOthers = ref(false)
+const filter = ref(null)
 const error = ref('')
 
 const unread = computed(() => alerts.value.filter((alert) => !alert.read).length)
 const subscribed = computed(() => sources.value.filter((s) => s.subscribed))
+const filterName = computed(() => subscribed.value.find((s) => s.id === filter.value)?.name)
+
+// 칩을 누르면 그 게시판 공지만, 다시 누르면 전체를 보여준다.
+async function toggleFilter(id) {
+  filter.value = filter.value === id ? null : id
+  showOthers.value = Boolean(filter.value)
+  try {
+    feed.value = await api.feed(filter.value)
+  } catch (failure) {
+    error.value = failure.message
+  }
+}
 
 onMounted(async () => {
   try {
@@ -38,20 +51,24 @@ onMounted(async () => {
       <h1 class="title-lg">해당되는 공지는 <span class="accent">{{ feed.match_count }}개</span>예요</h1>
     </div>
     <div class="chips">
-      <span v-for="source in subscribed" :key="source.id" class="chip">{{ source.name }}</span>
+      <button v-for="source in subscribed" :key="source.id" class="chip chip-filter" :aria-pressed="filter === source.id" @click="toggleFilter(source.id)">{{ source.name }}</button>
       <RouterLink to="/boards" class="chip chip-add">+ 게시판 추가</RouterLink>
     </div>
   </header>
   <main class="main">
     <p v-if="error" class="error" role="alert">{{ error }}</p>
+    <div v-if="filter" class="filter-bar">
+      <span><b>{{ filterName }}</b> 공지만 보는 중</span>
+      <button class="link-btn" @click="toggleFilter(filter)">전체 보기</button>
+    </div>
     <template v-if="feed">
       <template v-if="feed.urgent.length">
         <span class="section-label">마감 임박</span>
-        <NoticeCard v-for="notice in feed.urgent" :key="notice.id" :notice="notice" variant="urgent" />
+        <PagedList :notices="feed.urgent" variant="urgent" label="마감 임박" :size="4" />
       </template>
       <template v-if="feed.mine.length">
         <span class="section-label">나에게 해당</span>
-        <NoticeCard v-for="notice in feed.mine" :key="notice.id" :notice="notice" variant="mine" />
+        <PagedList :notices="feed.mine" variant="mine" label="나에게 해당" />
       </template>
       <p v-if="!feed.match_count" class="empty">지금 해당되는 공지가 없어요</p>
       <div v-if="feed.others.length" class="toggle-row">
@@ -59,7 +76,7 @@ onMounted(async () => {
         <button class="link-btn" :aria-expanded="showOthers" @click="showOthers = !showOthers">{{ showOthers ? '접기' : '펼치기' }}</button>
       </div>
       <template v-if="showOthers">
-        <NoticeCard v-for="notice in feed.others" :key="notice.id" :notice="notice" />
+        <PagedList :notices="feed.others" label="그 외 공지" />
       </template>
       <p v-if="feed.hidden_count" class="small" style="padding: 0 4px">대상이 아닌 공지 {{ feed.hidden_count }}개는 숨겼어요</p>
     </template>

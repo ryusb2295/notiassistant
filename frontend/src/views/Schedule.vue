@@ -61,6 +61,21 @@ function select(cell) {
   selected.value = selected.value === cell.key ? null : cell.key
 }
 
+const picking = ref(false)
+const pickYear = ref(year.value)
+
+function openPicker() {
+  pickYear.value = year.value
+  picking.value = !picking.value
+}
+
+function choose(m, y = pickYear.value) {
+  year.value = y
+  month.value = m
+  selected.value = null
+  picking.value = false
+}
+
 function move(step) {
   const next = new Date(year.value, month.value + step, 1)
   year.value = next.getFullYear()
@@ -74,10 +89,21 @@ function move(step) {
     <div class="head-row">
       <div class="month-nav">
         <button class="icon-btn" aria-label="이전 달" @click="move(-1)"><Icon name="back" /></button>
-        <h1 class="title-md">{{ year }}년 {{ month + 1 }}월</h1>
+        <button class="month-title" :aria-expanded="picking" @click="openPicker"><h1 class="title-md">{{ year }}년 {{ month + 1 }}월</h1><Icon name="next" :size="16" style="transform: rotate(90deg)" /></button>
         <button class="icon-btn" aria-label="다음 달" @click="move(1)"><Icon name="next" /></button>
       </div>
       <a :href="api.icsUrl()" class="more">캘린더 파일 받기</a>
+    </div>
+    <div v-if="picking" class="month-picker" role="dialog" aria-label="연도와 월 선택">
+      <div class="picker-year">
+        <button class="icon-btn" aria-label="이전 해" @click="pickYear -= 1"><Icon name="back" /></button>
+        <b>{{ pickYear }}년</b>
+        <button class="icon-btn" aria-label="다음 해" @click="pickYear += 1"><Icon name="next" /></button>
+      </div>
+      <div class="picker-months">
+        <button v-for="m in 12" :key="m" :class="{ on: pickYear === year && m - 1 === month }" @click="choose(m - 1)">{{ m }}월</button>
+      </div>
+      <button class="link-btn" @click="choose(now.getMonth(), now.getFullYear())">이번 달로</button>
     </div>
     <div class="cal">
       <span v-for="(name, index) in WEEK" :key="name" class="cal-week" :class="{ sun: index === 0 }">{{ name }}</span>

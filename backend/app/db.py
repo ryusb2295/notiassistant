@@ -18,6 +18,7 @@ CREATE TABLE IF NOT EXISTS users (
     username TEXT,
     password_hash TEXT,
     consented_at TEXT,
+    avatar_type TEXT,
     created_at TEXT NOT NULL DEFAULT (datetime('now'))
 );
 CREATE TABLE IF NOT EXISTS application_drafts (
@@ -120,7 +121,7 @@ def connect(path: Path | str | None = None) -> sqlite3.Connection:
 def _migrate(conn: sqlite3.Connection) -> None:
     """로그인 도입 전에 만든 DB에 계정 컬럼을 더한다."""
     columns = {row["name"] for row in conn.execute("PRAGMA table_info(users)")}
-    for column in ("username", "password_hash", "consented_at"):
+    for column in ("username", "password_hash", "consented_at", "avatar_type"):
         if column not in columns:
             conn.execute(f"ALTER TABLE users ADD COLUMN {column} TEXT")
     if "deleted" not in {row["name"] for row in conn.execute("PRAGMA table_info(alerts)")}:

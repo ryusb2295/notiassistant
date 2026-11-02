@@ -22,6 +22,7 @@ const tag = computed(() => {
       <span class="tag" :class="{ 'tag-due': variant === 'urgent', 'tag-info': notice.d_day === null }">{{ tag }}</span>
     </div>
     <span class="card-title">{{ notice.title }}</span>
+    <span v-if="notice.also?.length" class="small">{{ notice.also.join(', ') }}에도 올라온 공지</span>
     <div class="card-foot">
       <span class="reason" v-if="notice.match === 'match'"><Icon name="check" :size="14" :width="2.4" />{{ notice.reason }}</span>
       <span class="small" v-else>{{ notice.reason }}</span>

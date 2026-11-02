@@ -414,3 +414,72 @@ def test_unknown_inputs(client):
     body = {"username": "someone", "password": "test-password", "name": "a", "department": "없는과", "grade": 1, "agreed": True}
     assert client.post("/api/auth/signup", json=body).status_code == 422
     assert client.get("/api/users/none/feed").status_code == 401
+
+
+def test_duplicate_notices_are_merged_and_keep_best_match(client, monkeypatch):
+    department_boards(monkeypatch)
+    uid = make_user(client, interests=[])
+    first = seed(client.conn, "1", "[컴퓨터학부] 2026 하반기 마일리지 신청", source="computer")
+    seed(client.conn, "2", "2026 하반기 마일리지 신청", source="ice")
+    seed(client.conn, "3", "2026 하반기 마일리지 신청 안내", source="ice")
+
+    cards = [*client.get(f"/api/users/{uid}/feed").json()["mine"]]
+    titles = sorted(card["title"] for card in cards)
+    assert len(cards) == 2 and "2026 하반기 마일리지 신청 안내" in titles
+    merged = next(card for card in cards if card["id"] in (first, first + 1))
+    assert merged["also"] == [next(s for s in ("컴퓨터학부", "정보통신공학과") if s != merged["source"])]
+
+
+def test_feed_can_show_one_board(client, monkeypatch):
+    department_boards(monkeypatch)
+    uid = make_user(client, interests=[])
+    seed(client.conn, "1", "학부 공지", source="computer")
+    seed(client.conn, "2", "전공 공지", source="ice")
+    seed(client.conn, "3", "학교 공지", source="yu-news", category="장학")
+
+    only = client.get(f"/api/users/{uid}/feed", params={"source": "ice"}).json()
+    assert [c["title"] for c in [*only["mine"], *only["others"]]] == ["전공 공지"]
+    assert client.get(f"/api/users/{uid}/feed", params={"source": "math"}).json()["match_count"] == 0
+
+
+PNG = b"\x89PNG\r\n\x1a\n" + b"\0" * 32
+
+
+def test_avatar_upload_replace_and_delete(client, tmp_path, monkeypatch):
+    monkeypatch.setattr(config, "AVATAR_DIR", tmp_path / "avatars")
+    uid = make_user(client)
+    url = f"/api/users/{uid}/avatar"
+    assert client.get("/api/auth/me").json()["has_avatar"] is False
+    assert client.get(url).status_code == 404
+
+    assert client.put(url, files={"file": ("me.png", PNG)}).status_code == 204
+    assert client.get("/api/auth/me").json()["has_avatar"] is True
+    shown = client.get(url)
+    assert shown.content == PNG and shown.headers["content-type"] == "image/png"
+
+    webp = b"RIFF\0\0\0\0WEBPVP8 " + b"\0" * 16
+    assert client.put(url, files={"file": ("me.webp", webp)}).status_code == 204
+    assert client.get(url).headers["content-type"] == "image/webp"
+
+    assert client.delete(url).status_code == 204
+    assert client.get(url).status_code == 404 and not (tmp_path / "avatars" / uid).exists()
+
+
+def test_avatar_rejects_fake_and_large_files_and_others(client, tmp_path, monkeypatch):
+    monkeypatch.setattr(config, "AVATAR_DIR", tmp_path / "avatars")
+    uid = make_user(client)
+    url = f"/api/users/{uid}/avatar"
+    assert client.put(url, files={"file": ("me.png", b"<svg onload=alert(1)>")}).status_code == 415
+    assert client.put(url, files={"file": ("me.png", PNG + b"\0" * (3 * 1024 * 1024))}).status_code == 413
+    other = TestClient(main.app)
+    make_user(other, "second-user")
+    assert other.put(url, files={"file": ("me.png", PNG)}).status_code == 403
+    assert other.get(url).status_code == 403
+
+
+def test_account_deletion_removes_avatar(client, tmp_path, monkeypatch):
+    monkeypatch.setattr(config, "AVATAR_DIR", tmp_path / "avatars")
+    uid = make_user(client)
+    client.put(f"/api/users/{uid}/avatar", files={"file": ("me.png", PNG)})
+    client.post("/api/auth/delete-account", json={"password": "test-password"})
+    assert not (tmp_path / "avatars" / uid).exists()

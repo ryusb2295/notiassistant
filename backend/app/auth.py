@@ -146,7 +146,7 @@ def sync_department_boards(conn: sqlite3.Connection, user_id: str, department: s
 def _load(conn: sqlite3.Connection, user_id: str) -> dict:
     user = db.row_to_user(conn.execute("SELECT * FROM users WHERE id = ?", (user_id,)).fetchone())
     role = config.role_of(user["username"])
-    return {**user, "role": role, "is_admin": role != "student"}
+    return {**user, "role": role, "is_admin": role != "student", "has_avatar": bool(user.get("avatar_type"))}
 
 
 @router.post("/signup", status_code=201)
@@ -216,6 +216,7 @@ def delete_account(
     _check_password(conn, user_id, body.password)
     with conn:
         conn.execute("DELETE FROM users WHERE id = ?", (user_id,))
+    (config.AVATAR_DIR / user_id).unlink(missing_ok=True)
     response.delete_cookie(COOKIE_NAME)
 
 

@@ -14,6 +14,7 @@ load_dotenv(BACKEND_DIR / ".env")
 
 DB_PATH = Path(os.getenv("NOTI_DB", BACKEND_DIR / "data" / "noti.sqlite3"))
 ATTACHMENT_CACHE = BACKEND_DIR / "data" / "attachments"
+AVATAR_DIR = BACKEND_DIR / "data" / "avatars"
 COOKIE_SECURE = os.getenv("COOKIE_SECURE", "") == "1"  # HTTPS로 배포할 때 1
 ADMIN_USERNAMES = {name.strip() for name in os.getenv("ADMIN_USERNAMES", "").split(",") if name.strip()}
 STAFF_USERNAMES = {name.strip() for name in os.getenv("STAFF_USERNAMES", "").split(",") if name.strip()}

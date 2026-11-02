@@ -59,7 +59,14 @@ export const api = {
   sources: () => request(user('/sources')),
   subscribe: (id) => request(user(`/subscriptions/${id}`), { method: 'PUT' }),
   unsubscribe: (id) => request(user(`/subscriptions/${id}`), { method: 'DELETE' }),
-  feed: () => request(user('/feed')),
+  feed: (source) => request(user(source ? `/feed?source=${encodeURIComponent(source)}` : '/feed')),
+  avatarUrl: (version = '') => `/api${user('/avatar')}?v=${version}`,
+  uploadAvatar: (file) => {
+    const form = new FormData()
+    form.append('file', file)
+    return request(user('/avatar'), { method: 'PUT', body: form })
+  },
+  deleteAvatar: () => request(user('/avatar'), { method: 'DELETE' }),
   notice: (id) => request(user(`/notices/${id}`)),
   saveSchedule: (id) => request(user(`/notices/${id}/schedule`), { method: 'POST' }),
   removeSchedule: (id) => request(user(`/notices/${id}/schedule`), { method: 'DELETE' }),

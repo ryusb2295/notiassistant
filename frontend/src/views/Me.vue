@@ -2,6 +2,7 @@
 import { computed, onMounted, ref } from 'vue'
 import { useRouter } from 'vue-router'
 import { api } from '../api'
+import Avatar from '../components/Avatar.vue'
 import Icon from '../components/Icon.vue'
 
 const ROLES = { admin: '관리자', staff: '담당자' }
@@ -34,7 +35,7 @@ async function logout() {
   <main v-if="user" class="me-main">
     <section class="profile" aria-label="내 프로필">
       <div class="profile-top">
-        <Icon name="user" :size="26" :width="1.8" />
+        <Avatar :src="user.has_avatar ? api.avatarUrl(user.avatar_type) : ''" :size="46" />
         <span class="profile-name">
           {{ user.name }}
           <span v-if="roleLabel" class="role" :class="`role-${user.role}`"><Icon name="shield" :size="12" :width="2.4" />{{ roleLabel }}</span>
