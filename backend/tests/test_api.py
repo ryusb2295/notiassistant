@@ -419,14 +419,13 @@ def test_unknown_inputs(client):
 def test_duplicate_notices_are_merged_and_keep_best_match(client, monkeypatch):
     department_boards(monkeypatch)
     uid = make_user(client, interests=[])
-    first = seed(client.conn, "1", "[컴퓨터학부] 2026 하반기 마일리지 신청", source="computer")
-    seed(client.conn, "2", "2026 하반기 마일리지 신청", source="ice")
-    seed(client.conn, "3", "2026 하반기 마일리지 신청 안내", source="ice")
+    seed(client.conn, "1", "[컴퓨터학부] 2026 하반기 마일리지 신청", source="computer")
+    seed(client.conn, "2", "「2026 하반기 마일리지 신청」 안내", source="ice")
+    seed(client.conn, "3", "2026 하반기 장학금 신청 안내", source="ice")
 
     cards = [*client.get(f"/api/users/{uid}/feed").json()["mine"]]
-    titles = sorted(card["title"] for card in cards)
-    assert len(cards) == 2 and "2026 하반기 마일리지 신청 안내" in titles
-    merged = next(card for card in cards if card["id"] in (first, first + 1))
+    assert len(cards) == 2 and "2026 하반기 장학금 신청 안내" in [card["title"] for card in cards]
+    merged = next(card for card in cards if "마일리지" in card["title"])
     assert merged["also"] == [next(s for s in ("컴퓨터학부", "정보통신공학과") if s != merged["source"])]
 
 

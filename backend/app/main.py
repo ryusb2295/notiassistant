@@ -8,7 +8,6 @@ import re
 import sqlite3
 from contextlib import asynccontextmanager
 from datetime import date, timedelta
-from functools import lru_cache
 from pathlib import Path
 from typing import Any, Literal, Optional
 from urllib.parse import quote
@@ -18,7 +17,8 @@ from fastapi.responses import FileResponse
 from fastapi.staticfiles import StaticFiles
 from pydantic import BaseModel, Field
 
-from . import admin, analyzer, applications, auth, config, crawler, db, parsers, pipeline, schedule
+from . import admin, analyzer, applications, assistant, auth, config, crawler, db, parsers, pipeline, schedule
+from .files import attachment_bytes, get_fetcher
 from .auth import ProfileIn
 from .db import get_conn
 from .matcher import GENERAL, MATCH, MatchResult, match_notice
@@ -126,7 +126,6 @@ def notice_card(row: sqlite3.Row, user: dict[str, Any], now: date) -> dict[str, 
     }
 
 
-TITLE_NOISE = re.compile(r"\[[^\]]*\]|\([^)]*\)|[^0-9A-Za-z가-힣]")
 MATCH_RANK = {MATCH: 0, GENERAL: 1, "no": 2}
 
 
@@ -134,7 +133,7 @@ def merge_duplicates(cards: list[dict[str, Any]]) -> list[dict[str, Any]]:
     """여러 게시판에 같은 제목으로 올라온 공지를 하나로 합친다. 가장 잘 맞는 카드를 남긴다."""
     groups: dict[str, list[dict[str, Any]]] = {}
     for card in cards:
-        key = TITLE_NOISE.sub("", card["title"]).lower() or str(card["id"])
+        key = schedule.title_key(card["title"]) or str(card["id"])
         groups.setdefault(key, []).append(card)
     merged = []
     for group in groups.values():
@@ -514,33 +513,11 @@ def preview_kind(ext: str) -> str:
     return "text" if ext in parsers.TEXT_EXTENSIONS else "none"
 
 
-@lru_cache
-def get_fetcher() -> crawler.Fetcher:
-    return crawler.Fetcher()
-
-
 def load_attachment(conn: sqlite3.Connection, attachment_id: int) -> sqlite3.Row:
     row = conn.execute("SELECT * FROM attachments WHERE id = ?", (attachment_id,)).fetchone()
     if row is None:
         raise HTTPException(404, "첨부파일을 찾을 수 없습니다")
     return row
-
-
-def attachment_bytes(row: sqlite3.Row, fetcher: crawler.Fetcher) -> bytes:
-    """학교 서버 부담을 줄이고 현장 네트워크에 대비해 받은 파일을 캐시한다."""
-    if row["status"] == "personal":
-        raise HTTPException(403, "개인정보가 있을 수 있어 학교 사이트에서만 볼 수 있습니다")
-    path = config.attachment_path(row["url"])
-    if path.exists():
-        return path.read_bytes()
-    try:
-        data = fetcher.get_bytes(row["url"])
-    except (OSError, ValueError, PermissionError) as exc:
-        log.warning("첨부 다운로드 실패 %s: %s", row["name"], exc)
-        raise HTTPException(502, "학교 서버에서 파일을 받지 못했습니다") from exc
-    path.parent.mkdir(parents=True, exist_ok=True)
-    path.write_bytes(data)
-    return data
 
 
 @app.get("/api/attachments/{attachment_id}", dependencies=[Depends(auth.current_user_id)])
@@ -602,6 +579,7 @@ def attachment_text(
 app.include_router(users)
 app.include_router(applications.router)
 app.include_router(admin.router)
+app.include_router(assistant.router)
 
 if DIST_DIR.exists():
     app.mount("/assets", StaticFiles(directory=DIST_DIR / "assets"), name="assets")

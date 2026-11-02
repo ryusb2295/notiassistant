@@ -106,6 +106,11 @@ onBeforeUnmount(() => {
       <p class="muted">{{ user.name }}님, 최근 7일 새 공지 {{ feed.new_count }}개를 읽었어요</p>
       <h1 class="title-lg">해당되는 공지는 <span class="accent">{{ feed.match_count }}개</span>예요</h1>
     </div>
+    <RouterLink to="/ask" class="ask-entry">
+      <span class="ask-icon"><Icon name="spark" :size="18" :width="2.2" /></span>
+      <span class="ask-text"><b>AI 비서에게 물어보기</b><span>"이번 주 마감 뭐 있어?"처럼 물어보세요</span></span>
+      <Icon name="next" :size="18" />
+    </RouterLink>
     <label class="search">
       <Icon name="search" :size="18" />
       <input :value="query" type="search" placeholder="공지 검색 (예: 해커톤, 장학)" aria-label="공지 검색" @input="onSearch" />

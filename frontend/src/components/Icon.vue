@@ -18,6 +18,7 @@ defineProps({
     <template v-else-if="name === 'next'"><path d="m9 18 6-6-6-6" /></template>
     <template v-else-if="name === 'check'"><path d="M20 6 9 17l-5-5" /></template>
     <template v-else-if="name === 'spark'"><path d="M12 3l1.8 4.7L18.5 9.5l-4.7 1.8L12 16l-1.8-4.7L5.5 9.5l4.7-1.8z" /></template>
+    <template v-else-if="name === 'send'"><path d="M4 12 20 4l-6 16-3-7z" /><path d="m11 13 9-9" /></template>
     <template v-else-if="name === 'search'"><circle cx="11" cy="11" r="7" /><path d="m20 20-3.500-3.500" /></template>
     <template v-else-if="name === 'flag'"><path d="M5 21V4h11l-1.500 4L16 12H5" /></template>
     <template v-else-if="name === 'settings'"><circle cx="12" cy="12" r="3" /><path d="M12 3v3M12 18v3M3 12h3M18 12h3M5.600 5.600l2.100 2.100M16.300 16.300l2.100 2.100M18.400 5.600l-2.100 2.100M7.700 16.300l-2.100 2.100" /></template>

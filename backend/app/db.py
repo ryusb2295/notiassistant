@@ -29,6 +29,11 @@ CREATE TABLE IF NOT EXISTS application_drafts (
     updated_at TEXT NOT NULL DEFAULT (datetime('now')),
     PRIMARY KEY (user_id, notice_id)
 );
+CREATE TABLE IF NOT EXISTS ask_log (
+    id INTEGER PRIMARY KEY,
+    user_id TEXT NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+    asked_at TEXT NOT NULL
+);
 CREATE TABLE IF NOT EXISTS feedback (
     id INTEGER PRIMARY KEY,
     user_id TEXT REFERENCES users(id) ON DELETE SET NULL,

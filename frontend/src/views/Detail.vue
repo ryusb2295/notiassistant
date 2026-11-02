@@ -96,6 +96,12 @@ async function toggleSchedule() {
         <div class="row"><dt>판정</dt><dd :class="{ ok: notice.match === 'match' }">{{ notice.reason }}</dd></div>
       </dl>
 
+      <RouterLink :to="`/ask?notice=${id}`" class="ask-entry ask-entry-card">
+        <span class="ask-icon"><Icon name="spark" :size="18" :width="2.2" /></span>
+        <span class="ask-text"><b>이 공지에 물어보기</b><span>첨부파일까지 읽고 AI가 답해요</span></span>
+        <Icon name="next" :size="18" />
+      </RouterLink>
+
       <section class="report">
         <button v-if="!reporting && !reported" type="button" class="link-btn" @click="reporting = true"><Icon name="flag" :size="15" />판정이 틀렸어요</button>
         <div v-if="reporting" class="report-options">

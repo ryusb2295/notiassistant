@@ -7,6 +7,7 @@ import Admin from './views/Admin.vue'
 import Alerts from './views/Alerts.vue'
 import Applications from './views/Applications.vue'
 import Apply from './views/Apply.vue'
+import Ask from './views/Ask.vue'
 import Attachment from './views/Attachment.vue'
 import Boards from './views/Boards.vue'
 import Detail from './views/Detail.vue'
@@ -33,6 +34,7 @@ const router = createRouter({
     { path: '/schedule', component: Schedule, meta: { nav: true } },
     { path: '/boards', component: Boards, meta: { nav: true } },
     { path: '/alerts', component: Alerts, meta: { nav: true } },
+    { path: '/ask', component: Ask },
     { path: '/me', component: Me, meta: { nav: true } },
     { path: '/me/profile', component: Profile },
     { path: '/me/account', component: Account },

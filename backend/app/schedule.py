@@ -8,6 +8,15 @@ from typing import Any
 from urllib.parse import urlencode
 
 
+TITLE_NOISE = re.compile(r"\[[^\]]*\]|\([^)]*\)|[^0-9A-Za-z가-힣]")
+TITLE_TAIL = re.compile(r"(안내|공고|알림|공지)+$")
+
+
+def title_key(title: str) -> str:
+    """게시판마다 다른 말머리, 기호, 끝의 "안내" 같은 말을 빼고 같은 공지인지 비교할 열쇠를 만든다."""
+    return TITLE_TAIL.sub("", TITLE_NOISE.sub("", title).lower())
+
+
 def short_title(title: str) -> str:
     return re.sub(r"^((\[[^\]]*\]|\([^)]*\))\s*)+", "", title).strip()[:40]
 

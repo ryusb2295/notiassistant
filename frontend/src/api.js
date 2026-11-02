@@ -68,6 +68,7 @@ export const api = {
   },
   feedback: (id, kind, note = '') => request(user(`/notices/${id}/feedback`), { method: 'POST', body: JSON.stringify({ kind, note }) }),
   adminFeedback: () => request('/admin/feedback'),
+  ask: (body) => request(user('/ask'), { method: 'POST', body: JSON.stringify(body) }),
   avatarUrl: (version = '') => `/api${user('/avatar')}?v=${version}`,
   uploadAvatar: (file) => {
     const form = new FormData()
