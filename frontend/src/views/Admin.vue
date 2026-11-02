@@ -11,6 +11,7 @@ const CATEGORIES = ['장학', '취업·진로', '교육·특강', '경진대회'
 
 const router = useRouter()
 const departments = ref([])
+const maxYears = ref(4)
 const published = ref([])
 const feedback = ref([])
 const upload = ref(null)
@@ -32,6 +33,7 @@ onMounted(async () => {
   try {
     const [meta, list] = await Promise.all([api.meta(), api.adminNotices()])
     departments.value = meta.departments
+    maxYears.value = meta.max_years
     published.value = list
     feedback.value = await api.adminFeedback()
   } catch (failure) {
@@ -154,7 +156,7 @@ async function publish() {
         <div class="field">
           <span class="label">학년</span>
           <div class="chips">
-            <button v-for="grade in 5" :key="grade" type="button" class="toggle-chip" :aria-pressed="form.grades.includes(grade)" @click="toggle(form.grades, grade)">{{ grade }}학년</button>
+            <button v-for="grade in maxYears" :key="grade" type="button" class="toggle-chip" :aria-pressed="form.grades.includes(grade)" @click="toggle(form.grades, grade)">{{ grade }}학년</button>
           </div>
         </div>
       </section>

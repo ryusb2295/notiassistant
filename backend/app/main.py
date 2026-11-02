@@ -215,10 +215,11 @@ def health(conn: sqlite3.Connection = Depends(get_conn)):
 def meta():
     return {
         "departments": [
-            {"name": d.name, "college": d.college, "parent": d.parent, "aliases": d.aliases}
+            {"name": d.name, "college": d.college, "parent": d.parent, "aliases": d.aliases, "years": d.years}
             for d in config.DEPARTMENTS
         ],
         "interests": config.INTERESTS,
+        "max_years": config.MAX_YEARS,
         "analyzer": analyzer.provider(),
         "model": analyzer.active_model(),
     }
@@ -234,6 +235,7 @@ def update_user(user_id: str, body: ProfileIn, conn: sqlite3.Connection = Depend
     previous = load_user(conn, user_id)["department"]
     if body.department not in config.DEPARTMENT_BY_NAME:
         raise HTTPException(422, "목록에 없는 학과입니다")
+    auth.check_grade(body.department, body.grade)
     with conn:
         conn.execute(
             "UPDATE users SET name = ?, department = ?, grade = ?, interests = ? WHERE id = ?",

@@ -1,5 +1,5 @@
 <script setup>
-import { computed, onMounted, ref } from 'vue'
+import { computed, onMounted, ref, watch } from 'vue'
 import { useRouter } from 'vue-router'
 import { api } from '../api'
 import DepartmentPicker from '../components/DepartmentPicker.vue'
@@ -13,6 +13,9 @@ const password = ref('')
 const name = ref('')
 const department = ref('')
 const grade = ref(3)
+// 학과마다 수업 연한이 달라서(건축학 5년, 약학 6년 등) 선택지와 현재 값을 맞춘다.
+const maxGrade = computed(() => meta.value.departments.find((d) => d.name === department.value)?.years ?? 4)
+watch(maxGrade, (years) => { if (grade.value > years) grade.value = years })
 const interests = ref([])
 const agreed = ref(false)
 const error = ref('')
@@ -94,7 +97,7 @@ async function submit() {
         <div class="field">
           <label for="grade">학년</label>
           <select id="grade" v-model.number="grade" class="input">
-            <option v-for="item in 5" :key="item" :value="item">{{ item }}학년</option>
+            <option v-for="item in maxGrade" :key="item" :value="item">{{ item }}학년</option>
           </select>
         </div>
       </div>

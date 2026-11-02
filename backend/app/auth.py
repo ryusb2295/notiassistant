@@ -28,7 +28,7 @@ router = APIRouter(prefix="/api/auth")
 class ProfileIn(BaseModel):
     name: str = Field(min_length=1, max_length=30)
     department: str
-    grade: int = Field(ge=1, le=5)
+    grade: int = Field(ge=1, le=config.MAX_YEARS)
     interests: list[str] = []
 
 
@@ -108,6 +108,12 @@ def require_owner(user_id: str, session_user: str = Depends(current_user_id)) ->
         raise HTTPException(403, "내 계정의 정보만 볼 수 있습니다")
 
 
+def check_grade(department: str, grade: int) -> None:
+    years = config.DEPARTMENT_BY_NAME[department].years
+    if grade > years:
+        raise HTTPException(422, f"{department}는 {years}학년까지 있어요")
+
+
 def _now() -> str:
     return datetime.now(timezone.utc).isoformat()
 
@@ -157,6 +163,7 @@ def signup(body: SignupIn, response: Response, conn: sqlite3.Connection = Depend
         raise HTTPException(422, "아이디는 영문, 숫자, _ . - 로 4자 이상 입력해 주세요")
     if body.department not in config.DEPARTMENT_BY_NAME:
         raise HTTPException(422, "목록에 없는 학과입니다")
+    check_grade(body.department, body.grade)
     user_id = uuid.uuid4().hex
     try:
         with conn:

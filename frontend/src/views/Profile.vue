@@ -1,5 +1,5 @@
 <script setup>
-import { onMounted, ref } from 'vue'
+import { computed, onMounted, ref, watch } from 'vue'
 import { useRouter } from 'vue-router'
 import { api } from '../api'
 import Avatar from '../components/Avatar.vue'
@@ -10,6 +10,9 @@ import InterestPicker from '../components/InterestPicker.vue'
 const router = useRouter()
 const meta = ref({ departments: [], interests: [] })
 const form = ref(null)
+// 학과를 바꾸면 그 학과의 수업 연한에 맞게 학년 선택지를 줄이거나 늘린다.
+const maxGrade = computed(() => meta.value.departments.find((d) => d.name === form.value?.department)?.years ?? 4)
+watch(maxGrade, (years) => { if (form.value && form.value.grade > years) form.value.grade = years })
 const message = ref('')
 const photoSrc = ref('')
 
@@ -80,7 +83,7 @@ async function save() {
       <div class="field">
         <label for="me-grade">학년</label>
         <select id="me-grade" v-model.number="form.grade" class="input">
-          <option v-for="item in 5" :key="item" :value="item">{{ item }}학년</option>
+          <option v-for="item in maxGrade" :key="item" :value="item">{{ item }}학년</option>
         </select>
       </div>
     </div>

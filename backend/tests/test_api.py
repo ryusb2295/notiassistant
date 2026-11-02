@@ -217,6 +217,18 @@ def test_changing_department_replaces_department_boards(client, monkeypatch):
     assert subscribed == {"yu-news", "swedu", "math"}
 
 
+def test_grade_is_limited_by_department_years(client):
+    body = {"username": "fifth-year", "password": "test-password", "name": "a", "grade": 5, "agreed": True}
+    assert client.post("/api/auth/signup", json={**body, "department": "정보통신공학전공"}).status_code == 422
+    assert client.post("/api/auth/signup", json={**body, "department": "건축학전공"}).status_code == 201
+    uid = client.get("/api/auth/me").json()["id"]
+    profile = {"name": "a", "grade": 5, "interests": []}
+    assert client.patch(f"/api/users/{uid}", json={**profile, "department": "경영학과"}).status_code == 422
+    assert client.patch(f"/api/users/{uid}", json={**profile, "department": "경영학과", "grade": 4}).status_code == 200
+    years = {d["name"]: d["years"] for d in client.get("/api/meta").json()["departments"]}
+    assert years["정보통신공학전공"] == 4 and years["건축학전공"] == 5 and years["약학부"] == 6 and years["의예과"] == 2
+
+
 def test_passwords_are_hashed():
     stored = auth.hash_password("test-password")
     assert "test-password" not in stored

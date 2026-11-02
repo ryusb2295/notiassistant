@@ -132,6 +132,14 @@ _boards_file = Path(__file__).with_name("department_boards.json")
 DEPARTMENT_BOARDS: dict[str, dict[str, str]] = (
     json.loads(_boards_file.read_text(encoding="utf-8")) if _boards_file.exists() else {}
 )
+# 학과별 수업 연한. 없는 학과는 4년이다. 의·약학은 국내 일반 학제 기준이라 학사 규정으로 확인이 필요하다.
+GRADE_YEARS = {
+    "건축학전공": 5,
+    "약학부": 6, "약학전공": 6, "제약학전공": 6,
+    "의예과": 2, "의학과": 4,
+}
+DEFAULT_YEARS = 4
+MAX_YEARS = max(GRADE_YEARS.values())
 DEPARTMENT_SOURCES = {"정보통신공학전공": "ice"} | {name: b["id"] for name, b in DEPARTMENT_BOARDS.items()}
 
 # 여러 전공이 함께 쓰는 게시판은 학부 이름으로 보여준다.
@@ -154,6 +162,7 @@ class Department:
     sw_group: bool = False
     aliases: tuple[str, ...] = ()
     source_id: str = ""
+    years: int = DEFAULT_YEARS
 
     @property
     def terms(self) -> tuple[str, ...]:
@@ -166,6 +175,7 @@ def _department(name: str, college: str, parent: str = "") -> Department:
         sw_group=name in SW_DEPARTMENTS or parent in SW_DEPARTMENTS,
         aliases=ALIASES.get(name, ()),
         source_id=DEPARTMENT_SOURCES.get(name, ""),
+        years=GRADE_YEARS.get(name, DEFAULT_YEARS),
     )
 
 
