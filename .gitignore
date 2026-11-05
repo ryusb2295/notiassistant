@@ -6,3 +6,4 @@ frontend/dist/
 frontend/dist-mock/
 backend/data/
 .env
+.claude/
