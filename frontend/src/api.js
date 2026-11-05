@@ -25,7 +25,7 @@ async function mockRequest(path, options) {
   const method = options.method ?? 'GET'
   if (path.endsWith('/ask')) throw new Error('목업 버전이라 AI 비서는 답하지 않아요. 공지 둘러보기만 할 수 있어요.')
   const load = async (name) => {
-    const response = await fetch(`${import.meta.env.BASE_URL}mock/${name}.json`)
+    const response = await fetch(`${import.meta.env.BASE_URL}mock/${name}.json?v=${__BUILD_ID__}`)
     if (!response.ok) throw new Error('목업에 없는 데이터예요')
     return response.json()
   }
