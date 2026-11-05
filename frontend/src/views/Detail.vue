@@ -113,7 +113,7 @@ async function toggleSchedule() {
       </section>
 
       <RouterLink :to="`/notice/${id}/apply`" class="card apply-link">
-        <span><b>신청서 초안 만들기</b><br /><span class="small">내 정보로 자동 입력하고 직접 확인 후 신청해요</span></span>
+        <span><b>신청하기</b><br /><span class="small">신청 방법과 마감을 보고 바로 신청해요</span></span>
         <span class="more">시작 ›</span>
       </RouterLink>
 

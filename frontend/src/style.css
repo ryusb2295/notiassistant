@@ -163,8 +163,6 @@ dl { margin: 0; }
 
 .field { display: flex; flex-direction: column; gap: 6px; }
 .wrap-anywhere { overflow-wrap: anywhere; }
-.field-head { display: flex; justify-content: space-between; align-items: center; }
-.link-btn { border: 0; background: none; padding: 0; color: var(--accent, var(--ink-2)); font: inherit; font-size: 13px; font-weight: 600; cursor: pointer; }
 .field label, .field .label { font-size: 13px; color: var(--ink-3); font-weight: 600; }
 .input {
   height: 48px; border-radius: 10px; border: 1px solid #d6d9e0;

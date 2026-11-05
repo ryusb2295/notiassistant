@@ -17,7 +17,7 @@ const college = computed(() => meta.value?.departments.find((d) => d.name === us
 const stats = computed(() => [
   { label: '구독 게시판', value: summary.value?.subscriptions, to: '/boards' },
   { label: '다가오는 일정', value: summary.value?.upcoming, to: '/schedule' },
-  { label: '내 신청서', value: summary.value?.applications, to: '/me/applications' },
+  { label: '신청 현황', value: summary.value?.applications, to: '/me/applications' },
 ])
 
 onMounted(async () => {
@@ -61,7 +61,7 @@ async function logout() {
 
     <nav class="menu" aria-label="내 활동">
       <span class="menu-title">내 활동</span>
-      <RouterLink to="/me/applications" class="menu-row"><Icon name="doc" /><span>내 신청서</span><Icon name="next" :size="16" /></RouterLink>
+      <RouterLink to="/me/applications" class="menu-row"><Icon name="doc" /><span>신청 현황</span><Icon name="next" :size="16" /></RouterLink>
       <RouterLink to="/schedule" class="menu-row"><Icon name="calendar" /><span>내 일정</span><Icon name="next" :size="16" /></RouterLink>
       <RouterLink to="/alerts" class="menu-row"><Icon name="bell" /><span>알림함</span><span v-if="summary?.unread_alerts" class="menu-count">{{ summary.unread_alerts }}</span><Icon name="next" :size="16" /></RouterLink>
       <RouterLink to="/boards" class="menu-row"><Icon name="grid" /><span>구독 게시판</span><Icon name="next" :size="16" /></RouterLink>
