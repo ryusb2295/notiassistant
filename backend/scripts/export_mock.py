@@ -62,6 +62,20 @@ def main_() -> None:
     for source in config.SOURCES:
         if source.kind == "program":
             client.put(f"/api/users/{uid}/subscriptions/{source.id}")
+    # 일정·신청서 화면이 비어 보이지 않게 마감 남은 내 공지 몇 개로 예시를 채운다.
+    feed = client.get(f"/api/users/{uid}/feed").json()
+    upcoming = [c for c in feed["urgent"] + feed["mine"] if c["d_day"] is not None and c["d_day"] >= 1]
+    scheduled = []
+    for card in upcoming:
+        if len(scheduled) < 4 and client.post(f"/api/users/{uid}/notices/{card['id']}/schedule").status_code == 201:
+            scheduled.append(card["id"])
+    samples = [
+        ("submitted", "학과 수업에서 배운 내용을 실제 프로젝트에 적용해 보고 싶어 신청합니다."),
+        ("draft", "관련 분야 진로를 준비하며 직접 경험을 쌓고 싶습니다."),
+    ]
+    for notice_id, (status, motivation) in zip(scheduled, samples):
+        client.put(f"/api/users/{uid}/notices/{notice_id}/application",
+                   json={"values": {"student_no": "22012345", "motivation": motivation}, "status": status})
 
     shutil.rmtree(OUT, ignore_errors=True)
     OUT.mkdir(parents=True)
@@ -112,6 +126,7 @@ def main_() -> None:
 
     for notice_id in ids:
         save(f"{u}/notices/{notice_id}")
+        save(f"{u}/notices/{notice_id}/application")
     # 첨부 원본은 대부분 캐시에 없어서 정보만 저장하고, 목업 화면에선 학교 사이트로 보낸다.
     for attachment_id in attachment_ids:
         save(f"/attachments/{attachment_id}")
