@@ -1,1 +1,1 @@
-{"new_count": 0, "match_count": 0, "urgent": [], "mine": [], "others": [], "hidden_count": 0, "hidden": [], "last_crawl": "2026-11-04 05:33:10"}
+{"new_count": 0, "match_count": 1, "urgent": [{"id": 71, "title": "2026학년도 YU사회공헌 아이디어 공모전 서류심사 선발자(팀) 발표", "source_id": "volunteer", "source": "사회공헌단", "posted_at": "2026-10-28", "category": "경진대회", "deadline": "2026-11-09", "d_day": 4, "match": "match", "reason": "관심사 일치 · 경진대회", "analyzer": "openai", "found_in": ["본문"], "also": []}], "mine": [], "others": [], "hidden_count": 0, "hidden": [], "last_crawl": "2026-11-04 05:33:10"}

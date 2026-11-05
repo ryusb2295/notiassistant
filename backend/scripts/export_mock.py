@@ -58,6 +58,10 @@ def main_() -> None:
     main.app.dependency_overrides[get_fetcher] = OfflineFetcher
     client = TestClient(main.app)
     uid = client.post("/api/auth/signup", json=DEMO).json()["id"]
+    # 목업에서 사업단 공지도 보이게 사업단 게시판을 모두 구독해 둔다.
+    for source in config.SOURCES:
+        if source.kind == "program":
+            client.put(f"/api/users/{uid}/subscriptions/{source.id}")
 
     shutil.rmtree(OUT, ignore_errors=True)
     OUT.mkdir(parents=True)
