@@ -14,6 +14,14 @@ const busy = ref(false)
 const missing = computed(() => draft.value?.fields.filter((field) => !field.value) ?? [])
 const autoCount = computed(() => draft.value?.fields.filter((field) => field.auto).length ?? 0)
 const submitted = computed(() => draft.value?.status === 'submitted')
+// 신청 방법에 링크가 있으면 버튼으로 빼고, 본문에는 긴 주소 대신 설명만 남긴다.
+const formUrl = computed(() => draft.value?.how_to_apply?.match(/https?:\/\/[^\s)\]]+/)?.[0] ?? '')
+const formName = computed(() => (/forms\.gle|docs\.google\.com\/forms/.test(formUrl.value) ? '구글 폼' : '신청 페이지'))
+const howTo = computed(() => {
+  const text = draft.value?.how_to_apply
+  if (!text) return '공지 원문에서 신청 방법을 확인해 주세요'
+  return formUrl.value ? text.replace(formUrl.value, '').replace(/\(\s*\)/g, '').replace(/\s{2,}/g, ' ').trim() : text
+})
 
 onMounted(async () => {
   try {
@@ -39,6 +47,15 @@ async function save(status, done) {
   }
 }
 
+async function copyField(field) {
+  try {
+    await navigator.clipboard.writeText(field.value)
+    message.value = `${field.label}을(를) 복사했어요. ${formName.value}에 붙여 넣어 주세요`
+  } catch {
+    message.value = '복사하지 못했어요'
+  }
+}
+
 async function copy() {
   const text = draft.value.fields.map((field) => `${field.label}: ${field.value}`).join('\n')
   try {
@@ -61,29 +78,34 @@ async function copy() {
   <main v-if="draft" class="main">
     <section class="summary">
       <span class="summary-title"><Icon name="spark" :size="16" :width="2.2" />{{ draft.total }}개 항목 중 {{ autoCount }}개를 채웠어요</span>
-      <p class="small">프로필과 공지 내용으로 채웠어요. 틀린 부분은 고칠 수 있어요.</p>
+      <p class="small">{{ formUrl ? `${formName}에 옮겨 적을 내용을` : '신청할 때 쓸 내용을' }} 프로필과 공지로 미리 채워 뒀어요. 칸마다 복사할 수 있어요.</p>
+    </section>
+
+    <section class="card">
+      <span class="label-strong">신청 방법</span>
+      <p class="muted wrap-anywhere">{{ howTo }}</p>
+      <p v-if="draft.deadline" class="reason" style="color: var(--due)">{{ longDate(draft.deadline) }} 마감</p>
+      <a v-if="formUrl" :href="formUrl" target="_blank" rel="noopener" class="btn btn-small">{{ formName }} 열기</a>
+      <p class="small">공지비서는 대신 제출하지 않아요. 아래 내용을 복사해 {{ formUrl ? formName : '신청 화면' }}에 붙여 넣고 직접 신청해 주세요.</p>
     </section>
 
     <form class="card" @submit.prevent="save(submitted ? 'submitted' : 'draft', '저장했어요')">
       <div v-for="field in draft.fields" :key="field.key" class="field">
-        <label :for="`apply-${field.key}`">{{ field.label }}<template v-if="!field.auto"> · 직접 입력</template></label>
+        <div class="field-head">
+          <label :for="`apply-${field.key}`">{{ field.label }}<template v-if="!field.auto"> · 직접 입력</template></label>
+          <button v-if="field.value" type="button" class="link-btn" @click="copyField(field)">복사</button>
+        </div>
         <textarea v-if="field.multiline" :id="`apply-${field.key}`" v-model="field.value" class="input textarea" rows="4" maxlength="2000"></textarea>
         <input v-else :id="`apply-${field.key}`" v-model="field.value" class="input" maxlength="2000" />
       </div>
       <button class="btn btn-line btn-small" :disabled="busy">초안 저장</button>
-    </form>
-
-    <section class="card">
-      <span class="label-strong">신청 방법</span>
-      <p class="muted">{{ draft.how_to_apply || '공지 원문에서 신청 방법을 확인해 주세요' }}</p>
-      <p v-if="draft.deadline" class="reason" style="color: var(--due)">{{ longDate(draft.deadline) }} 마감</p>
-      <p class="small">공지비서는 대신 제출하지 않아요. 내용을 확인한 뒤 직접 신청해 주세요.</p>
       <div class="action-row">
-        <button type="button" class="btn btn-line btn-small btn-grow" @click="copy">복사</button>
+        <button type="button" class="btn btn-line btn-small btn-grow" @click="copy">전체 복사</button>
         <a :href="api.applicationFile(id)" class="btn btn-line btn-small btn-grow">파일로 받기</a>
         <a v-if="draft.url" :href="draft.url" target="_blank" rel="noopener" class="btn btn-line btn-small btn-grow">공지 원문</a>
       </div>
-    </section>
+    </form>
+
     <p v-if="message" class="muted" role="status">{{ message }}</p>
   </main>
   <p v-else-if="message" class="error main" role="alert">{{ message }}</p>

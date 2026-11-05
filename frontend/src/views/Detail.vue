@@ -92,7 +92,7 @@ async function toggleSchedule() {
           <dd v-else>공지에서 찾지 못했어요</dd>
         </div>
         <div v-if="notice.benefit" class="row"><dt>혜택</dt><dd>{{ notice.benefit }}</dd></div>
-        <div v-if="notice.how_to_apply" class="row"><dt>신청 방법</dt><dd>{{ notice.how_to_apply }}</dd></div>
+        <div v-if="notice.how_to_apply" class="row"><dt>신청 방법</dt><dd class="wrap-anywhere">{{ notice.how_to_apply }}</dd></div>
         <div class="row"><dt>판정</dt><dd :class="{ ok: notice.match === 'match' }">{{ notice.reason }}</dd></div>
       </dl>
 
