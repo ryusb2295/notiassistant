@@ -1,7 +1,7 @@
 import { createApp } from 'vue'
-import { createRouter, createWebHistory } from 'vue-router'
+import { createRouter, createWebHashHistory, createWebHistory } from 'vue-router'
 import App from './App.vue'
-import { restoreSession } from './api'
+import { MOCK, restoreSession } from './api'
 import Account from './views/Account.vue'
 import Admin from './views/Admin.vue'
 import Alerts from './views/Alerts.vue'
@@ -21,7 +21,8 @@ import Schedule from './views/Schedule.vue'
 import './style.css'
 
 const router = createRouter({
-  history: createWebHistory(),
+  // 목업은 정적 호스팅이라 새로고침해도 404가 안 나게 해시 주소를 쓴다.
+  history: MOCK ? createWebHashHistory() : createWebHistory(),
   routes: [
     { path: '/', component: Feed, meta: { nav: true } },
     { path: '/start', component: Onboarding, meta: { public: true } },

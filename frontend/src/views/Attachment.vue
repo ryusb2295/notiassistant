@@ -1,7 +1,7 @@
 <script setup>
 import { computed, onMounted, ref } from 'vue'
 import { useRouter } from 'vue-router'
-import { api } from '../api'
+import { api, MOCK } from '../api'
 import Icon from '../components/Icon.vue'
 
 const props = defineProps({ fileId: { type: String, required: true } })
@@ -65,7 +65,7 @@ async function loadText() {
         <p v-else-if="text" class="viewer-text">{{ text }}</p>
         <p v-else-if="text !== null" class="muted">글자를 찾지 못했어요. 스캔한 문서일 수 있으니 파일을 받아서 확인해 주세요.</p>
       </div>
-      <p v-else-if="file.personal" class="empty">개인정보가 있을 수 있어 학교 사이트에서만 볼 수 있어요.</p>
+      <p v-else-if="file.personal" class="empty">{{ MOCK ? '목업 버전이라 첨부는 학교 사이트에서 확인해 주세요.' : '개인정보가 있을 수 있어 학교 사이트에서만 볼 수 있어요.' }}</p>
       <p v-else-if="file.preview === 'none'" class="empty">이 형식은 미리 볼 수 없어요. 파일을 받아서 확인해 주세요.</p>
     </template>
   </main>
