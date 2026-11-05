@@ -59,7 +59,7 @@ async function deleteAccount() {
     <section class="card account">
       <button type="button" class="link-btn danger" :aria-expanded="showDelete" @click="showDelete = !showDelete">회원 탈퇴</button>
       <form v-if="showDelete" class="field" @submit.prevent="deleteAccount">
-        <p class="warn">프로필, 구독, 일정, 신청서, 알림이 모두 삭제되고 되돌릴 수 없어요.</p>
+        <p class="warn">프로필, 구독, 일정, 신청 현황, 알림이 모두 삭제되고 되돌릴 수 없어요.</p>
         <label for="delete-password">비밀번호 확인</label>
         <input id="delete-password" v-model="deletePassword" class="input" type="password" autocomplete="current-password" />
         <button class="btn btn-small btn-danger" :disabled="!deletePassword">탈퇴하기</button>

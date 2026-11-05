@@ -69,13 +69,9 @@ def main_() -> None:
     for card in upcoming:
         if len(scheduled) < 4 and client.post(f"/api/users/{uid}/notices/{card['id']}/schedule").status_code == 201:
             scheduled.append(card["id"])
-    samples = [
-        ("submitted", "학과 수업에서 배운 내용을 실제 프로젝트에 적용해 보고 싶어 신청합니다."),
-        ("draft", "관련 분야 진로를 준비하며 직접 경험을 쌓고 싶습니다."),
-    ]
-    for notice_id, (status, motivation) in zip(scheduled, samples):
-        client.put(f"/api/users/{uid}/notices/{notice_id}/application",
-                   json={"values": {"student_no": "22012345", "motivation": motivation}, "status": status})
+    # 신청 현황 예시: 하나는 신청 완료, 하나는 신청 예정.
+    for notice_id, status in zip(scheduled, ("submitted", "draft")):
+        client.put(f"/api/users/{uid}/notices/{notice_id}/application", json={"values": {}, "status": status})
 
     shutil.rmtree(OUT, ignore_errors=True)
     OUT.mkdir(parents=True)
