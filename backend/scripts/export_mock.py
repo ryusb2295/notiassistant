@@ -67,8 +67,21 @@ def main_() -> None:
     upcoming = [c for c in feed["urgent"] + feed["mine"] if c["d_day"] is not None and c["d_day"] >= 1]
     scheduled = []
     for card in upcoming:
-        if len(scheduled) < 4 and client.post(f"/api/users/{uid}/notices/{card['id']}/schedule").status_code == 201:
+        if len(scheduled) < 8 and client.post(f"/api/users/{uid}/notices/{card['id']}/schedule").status_code == 201:
             scheduled.append(card["id"])
+    # 지난 달 달력도 비어 보이지 않게 10월에 일정이 있던 내 공지를 더 넣는다.
+    conn = db.connect(tmp)
+    user = main.load_user(conn, uid)
+    october = [
+        row["id"] for row in conn.execute(
+            "SELECT n.id, n.title, n.source_id, n.posted_at, a.data, a.analyzer "
+            "FROM notices n JOIN analyses a ON a.notice_id = n.id ORDER BY n.posted_at DESC")
+        if main.notice_card(row, user, main.today())["match"] == main.MATCH
+        and any(e["date"].startswith("2026-10") for e in main.schedule.notice_events(row["title"], json.loads(row["data"])))
+    ]
+    conn.close()
+    for notice_id in october[:10]:
+        client.post(f"/api/users/{uid}/notices/{notice_id}/schedule")
     # 신청 현황 예시: 하나는 신청 완료, 하나는 신청 예정.
     for notice_id, status in zip(scheduled, ("submitted", "draft")):
         client.put(f"/api/users/{uid}/notices/{notice_id}/application", json={"values": {}, "status": status})
