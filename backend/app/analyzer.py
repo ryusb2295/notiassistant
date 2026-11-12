@@ -11,7 +11,7 @@ from typing import Literal, Optional
 
 import anthropic
 import openai
-from pydantic import BaseModel, Field
+from pydantic import BaseModel, Field, field_validator
 
 from . import config
 from .config import DEPARTMENTS, SW_GROUP
@@ -22,11 +22,21 @@ log = logging.getLogger(__name__)
 Category = Literal["장학", "취업·진로", "교육·특강", "경진대회", "대외활동", "학사", "행사", "자격증", "기타"]
 
 
+def _iso_or_none(value: str | None) -> str | None:
+    # 모델이 null 대신 "null" 같은 글자를 넣는 경우가 있어 날짜가 아니면 비운다.
+    try:
+        return date.fromisoformat(value).isoformat() if value else None
+    except ValueError:
+        return None
+
+
 class NoticeEvent(BaseModel):
     title: str = Field(description="일정 이름")
     date: str = Field(description="시작일 YYYY-MM-DD")
     end_date: Optional[str] = Field(description="종료일 YYYY-MM-DD, 하루 일정이면 null")
     kind: Literal["deadline", "event"] = Field(description="신청 마감은 deadline, 참여 행사는 event")
+
+    _end_date = field_validator("end_date")(_iso_or_none)
 
 
 class NoticeAnalysis(BaseModel):
@@ -40,6 +50,8 @@ class NoticeAnalysis(BaseModel):
     benefit: Optional[str] = Field(description="혜택. 없으면 null")
     how_to_apply: Optional[str] = Field(description="신청 방법. 없으면 null")
     found_in: list[str] = Field(description="핵심 정보를 찾은 위치. 본문 또는 첨부파일 이름")
+
+    _deadline = field_validator("deadline")(_iso_or_none)
 
 
 SYSTEM_PROMPT = f"""당신은 영남대학교 공지를 학생에게 정리해 주는 분석기입니다.

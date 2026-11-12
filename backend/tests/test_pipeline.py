@@ -126,3 +126,10 @@ def test_list_page_asks_for_enough_rows(tmp_path):
     fetcher = Recorder()
     pipeline.crawl_source(conn, fetcher, SOURCE, 30, None)
     assert fetcher.lists == [f"{SOURCE.url}?articleLimit=30"]
+
+
+def test_string_null_dates_become_none():
+    from app.analyzer import NoticeEvent
+
+    event = NoticeEvent(title="발표", date="2026-08-19", end_date="null", kind="event")
+    assert event.end_date is None
